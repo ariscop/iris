@@ -1,6 +1,6 @@
 /* This could do with a rewrite from scratch. */
 
-qwebirc.irc.IRCConnection = new Class({
+qwebirc.irc.AjaxIRCConnection = new Class({
   Implements: [Events, Options],
   session: null,
   options: {

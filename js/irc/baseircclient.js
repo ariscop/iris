@@ -32,7 +32,7 @@ qwebirc.irc.BaseIRCClient = new Class({
 
     connOptions.initialNickname = this.nickname;
     connOptions.onRecv = this.dispatch.bind(this);
-    this.connection = new qwebirc.irc.IRCConnection(session, connOptions);
+    this.connection = new qwebirc.irc.WebSocketIRCConnection(session, connOptions);
 
     this.send = this.connection.send.bind(this.connection);
     this.connect = this.connection.connect.bind(this.connection);

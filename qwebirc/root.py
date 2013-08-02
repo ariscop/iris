@@ -79,6 +79,7 @@ class RootSite(server.Site):
       root.putChild(path, sobj)
       
     register(engines.AJAXEngine, "e")
+    register(engines.WebSocketEngine, "ws")
     register(engines.FeedbackEngine, "feedback")
     register(engines.AdminEngine, "adminengine", services)
     if config.athemeengine["xmlrpc_path"]:
