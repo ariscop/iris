@@ -27,6 +27,7 @@ class WebSocketIRCSession(protocol.Protocol):
         self.client = None
         self.transport = None
         self.request = request
+        request.channel.cancelTimeout()
 
     def makeConnection(self, transport):
         self.transport = transport
@@ -92,8 +93,7 @@ class WebSocketIRCSession(protocol.Protocol):
         self.disconnect()
     
     def dataReceived(self, data):
-        print "dataReceived"
-        self.transport.write(data)
+        self.client.write(data)
 
     def write(self, data):
         self.transport.write(data)
