@@ -32,13 +32,21 @@ qwebirc.irc.BaseIRCClient = new Class({
 
     connOptions.initialNickname = this.nickname;
     connOptions.onRecv = this.dispatch.bind(this);
-    this.connection = new qwebirc.irc.WebSocketIRCConnection(session, connOptions);
+    
+    this.setConnection = function(connection) {
+        this.connection = new connection(session, connOptions);
 
-    this.send = this.connection.send.bind(this.connection);
-    this.connect = this.connection.connect.bind(this.connection);
-    this.disconnect = this.connection.disconnect.bind(this.connection);
+        this.send = this.connection.send.bind(this.connection);
+        this.connect = this.connection.connect.bind(this.connection);
+        this.disconnect = this.connection.disconnect.bind(this.connection);
 
-    this.setupGenericErrors();
+        this.setupGenericErrors();
+    }.bind(this)
+    
+    if("WebSocket" in window)
+        this.setConnection(qwebirc.irc.WebSocketIRCConnection)
+    else
+        this.setConnection(qwebirc.irc.AjaxIRCConnection);
   },
   dispatch: function(data) {
     var message = data[0];
@@ -51,6 +59,9 @@ qwebirc.irc.BaseIRCClient = new Class({
         this.disconnected(data[1]);
       }
       this.disconnect();
+    } else if(message == "reconnect"){
+      this.setConnection(qwebirc.irc.AjaxIRCConnection);
+      this.connect()
     } else if(message == "c") {
       var command = data[1].toUpperCase();
 

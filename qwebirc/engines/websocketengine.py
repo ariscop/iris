@@ -1,8 +1,10 @@
 from twisted.internet import reactor
 from twisted.web.websockets import WebSocketsResource, WebSocketsProtocolWrapper
 from twisted.internet import protocol
+from adminengine import AdminEngineAction
 import qwebirc.ircclient as ircclient
 import qwebirc.util.qjson as json
+from qwebirc.util import HitCounter
 import qwebirc.config as config
 import os, md5
 
@@ -55,7 +57,7 @@ class WebSocketIRCSession(protocol.Protocol):
             if not Sessions.get(self.id):
                 break
             else:
-                raise IDGenerationException()
+                raise Exception("Probability broke")
         
         Sessions[self.id] = self
 
@@ -109,17 +111,27 @@ class WebSocketIRCSession(protocol.Protocol):
 
 
 def return_protocol(protocolNames, request):
-    return WebSocketIRCSession(request), None
+    return WebSocketIRCSession(request), "qwebirc"
 
 class WebSocketEngine(WebSocketsResource):
+    
     def __init__(self, path):
+        self.__hit = HitCounter()
         WebSocketsResource.__init__(self, return_protocol)
     
     def closeById(self, k):
-        k.disconnect()
+        s = Sessions.get(k)
+        if s is None:
+            return
+        s.client.client.error("Closed by admin interface")
+
+    def render(self, request):
+        self.__hit()
+        return WebSocketsResource.render(self, request)
     
     @property
     def adminEngine(self):
         return {
-            "Sessions": [(str(v.client), AdminEngineAction("close", self.closeById, k)) for k, v in Sessions.iteritems() if not v.closed],
+            "Sessions": [(str(v.client.client), AdminEngineAction("close", self.closeById, k)) for k, v in Sessions.iteritems() if not v.closed],
+            "Total hits": [(self.__hit,)],
         }
