@@ -1,5 +1,8 @@
 from ajaxengine import AJAXEngine
-from websocketengine import WebSocketEngine
+try:
+  from websocketengine import WebSocketEngine
+except ImportError:
+  pass
 from athemeengine import AthemeEngine
 from adminengine import AdminEngine
 from staticengine import StaticEngine
