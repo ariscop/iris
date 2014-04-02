@@ -496,6 +496,8 @@ qwebirc.irc.IRCClient = new Class({
   connected: function() {
     qwebirc.connected = true;
     this.newServerLine("CONNECT");
+    this.send("NICK "+this.nickname);
+    this.send("USER iris 0 * : Webchat");
   },
   serverError: function(message) {
     this.newServerLine("ERROR", {"m": message});

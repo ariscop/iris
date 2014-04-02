@@ -5,8 +5,8 @@
   <title>FooNet Web IRC (Iris)</title>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
   <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
-  <link rel="stylesheet" href="css/debug/colours.css" type="text/css"/>
-  <link rel="stylesheet" href="css/debug/dialogs.css" type="text/css"/>
+  <link rel="stylesheet" href="css/colours.css" type="text/css"/>
+  <link rel="stylesheet" href="css/dialogs.css" type="text/css"/>
   <script type="text/javascript" src="js/mootools-core-1.4.5-full-compat.js"></script>
   <script type="text/javascript" src="js/mootools-more-1.4.0.1.js"></script>
   <script type="text/javascript" src="js/qwebirc.js"></script>
@@ -18,6 +18,7 @@
   <script type="text/javascript" src="js/session.js"></script>
   <script type="text/javascript" src="js/sound.js"></script>
   <script type="text/javascript" src="js/version.js"></script>
+  <script type="text/javascript" src="js/swfobject.js"></script>
   <script type="text/javascript" src="js/irc/athemequery.js"></script>
   <script type="text/javascript" src="js/irc/baseircclient.js"></script>
   <script type="text/javascript" src="js/irc/commandhistory.js"></script>
@@ -96,6 +97,16 @@
     <noscript>
       <div id="noscript">Javascript is required to use IRC.</div>
     </noscript>
+  </div>
+  <div style=”width:0px;height:0px;overflow:hidden;”>
+      <div id="FlashSocket"></div>
+      <script type="text/javascript">
+        FlashSocket = swfobject.createSWF({
+            data: "swf/flashsocket.swf",
+            width: "10",
+            height: "10"
+        }, {}, "FlashSocket");
+      </script>
   </div>
 </body>
 </html>
