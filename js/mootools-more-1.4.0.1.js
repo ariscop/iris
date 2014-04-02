@@ -1,4 +1,15 @@
-//MooTools More, <http://mootools.net/more>. Copyright (c) 2006-2009 Aaron Newton <http://clientcide.com/>, Valerio Proietti <http://mad4milk.net> & the MooTools team <http://mootools.net/developers>, MIT Style License.
+/*
+---
+MooTools: the javascript framework
+
+web build:
+ - http://mootools.net/more/d9f1608ab692fc8b7d10b97ded901c52
+
+packager build:
+ - packager build More/More More/Class.Binds More/Element.Measure More/Fx.Elements More/Fx.Scroll More/Fx.Slide More/Fx.SmoothScroll More/Drag More/Drag.Move More/Slider More/Sortables More/Assets More/Color More/Group More/Hash.Cookie More/Scroller More/Tips
+
+...
+*/
 
 /*
 ---
@@ -11,6 +22,16 @@ description: MooTools More
 
 license: MIT-style license
 
+authors:
+  - Guillermo Rauch
+  - Thomas Aylott
+  - Scott Kyle
+  - Arian Stolwijk
+  - Tim Wienk
+  - Christoph Pojer
+  - Aaron Newton
+  - Jacob Thornton
+
 requires:
   - Core/MooTools
 
@@ -20,8 +41,8 @@ provides: [MooTools.More]
 */
 
 MooTools.More = {
-	'version': '1.2.5.1',
-	'build': '254884f2b83651bf95260eed5c6cceb838e22d8e'
+	'version': '1.4.0.1',
+	'build': 'a4244edf2aa97ac8a196fc96082dd35af1abab87'
 };
 
 
@@ -49,12 +70,13 @@ provides: [Class.Binds]
 */
 
 Class.Mutators.Binds = function(binds){
-    return binds;
+	if (!this.prototype.initialize) this.implement('initialize', function(){});
+	return Array.from(binds).concat(this.prototype.Binds || []);
 };
 
 Class.Mutators.initialize = function(initialize){
 	return function(){
-		$splat(this.Binds).each(function(name){
+		Array.from(this.Binds).each(function(name){
 			var original = this[name];
 			if (original) this[name] = original.bind(this);
 		}, this);
@@ -89,22 +111,45 @@ provides: [Element.Measure]
 ...
 */
 
+(function(){
+
+var getStylesList = function(styles, planes){
+	var list = [];
+	Object.each(planes, function(directions){
+		Object.each(directions, function(edge){
+			styles.each(function(style){
+				list.push(style + '-' + edge + (style == 'border' ? '-width' : ''));
+			});
+		});
+	});
+	return list;
+};
+
+var calculateEdgeSize = function(edge, styles){
+	var total = 0;
+	Object.each(styles, function(value, style){
+		if (style.test(edge)) total = total + value.toInt();
+	});
+	return total;
+};
+
+var isVisible = function(el){
+	return !!(!el || el.offsetHeight || el.offsetWidth);
+};
+
+
 Element.implement({
 
 	measure: function(fn){
-		var vis = function(el) {
-			return !!(!el || el.offsetHeight || el.offsetWidth);
-		};
-		if (vis(this)) return fn.apply(this);
+		if (isVisible(this)) return fn.call(this);
 		var parent = this.getParent(),
-			restorers = [],
-			toMeasure = []; 
-		while (!vis(parent) && parent != document.body) {
+			toMeasure = [];
+		while (!isVisible(parent) && parent != document.body){
 			toMeasure.push(parent.expose());
 			parent = parent.getParent();
 		}
-		var restore = this.expose();
-		var result = fn.apply(this);
+		var restore = this.expose(),
+			result = fn.call(this);
 		restore();
 		toMeasure.each(function(restore){
 			restore();
@@ -113,7 +158,7 @@ Element.implement({
 	},
 
 	expose: function(){
-		if (this.getStyle('display') != 'none') return $empty;
+		if (this.getStyle('display') != 'none') return function(){};
 		var before = this.style.cssText;
 		this.setStyles({
 			display: 'block',
@@ -126,12 +171,15 @@ Element.implement({
 	},
 
 	getDimensions: function(options){
-		options = $merge({computeSize: false},options);
-		var dim = {};
+		options = Object.merge({computeSize: false}, options);
+		var dim = {x: 0, y: 0};
+
 		var getSize = function(el, options){
-			return (options.computeSize)?el.getComputedSize(options):el.getSize();
+			return (options.computeSize) ? el.getComputedSize(options) : el.getSize();
 		};
+
 		var parent = this.getParent('body');
+
 		if (parent && this.getStyle('display') == 'none'){
 			dim = this.measure(function(){
 				return getSize(this, options);
@@ -140,17 +188,25 @@ Element.implement({
 			try { //safari sometimes crashes here, so catch it
 				dim = getSize(this, options);
 			}catch(e){}
-		} else {
-			dim = {x: 0, y: 0};
 		}
-		return $chk(dim.x) ? $extend(dim, {width: dim.x, height: dim.y}) : $extend(dim, {x: dim.width, y: dim.height});
+
+		return Object.append(dim, (dim.x || dim.x === 0) ? {
+				width: dim.x,
+				height: dim.y
+			} : {
+				x: dim.width,
+				y: dim.height
+			}
+		);
 	},
 
 	getComputedSize: function(options){
+		//<1.2compat>
 		//legacy support for my stupid spelling error
 		if (options && options.plains) options.planes = options.plains;
-		
-		options = $merge({
+		//</1.2compat>
+
+		options = Object.merge({
 			styles: ['padding','border'],
 			planes: {
 				height: ['top','bottom'],
@@ -158,65 +214,48 @@ Element.implement({
 			},
 			mode: 'both'
 		}, options);
-		
-		var size = {width: 0,height: 0};
-		switch (options.mode){
-			case 'vertical':
-				delete size.width;
-				delete options.planes.width;
-				break;
-			case 'horizontal':
-				delete size.height;
-				delete options.planes.height;
-				break;
+
+		var styles = {},
+			size = {width: 0, height: 0},
+			dimensions;
+
+		if (options.mode == 'vertical'){
+			delete size.width;
+			delete options.planes.width;
+		} else if (options.mode == 'horizontal'){
+			delete size.height;
+			delete options.planes.height;
 		}
-		var getStyles = [];
-		//this function might be useful in other places; perhaps it should be outside this function?
-		$each(options.planes, function(plane, key){
-			plane.each(function(edge){
-				options.styles.each(function(style){
-					getStyles.push((style == 'border') ? style + '-' + edge + '-' + 'width' : style + '-' + edge);
-				});
-			});
-		});
-		var styles = {};
-		getStyles.each(function(style){ styles[style] = this.getComputedStyle(style); }, this);
-		var subtracted = [];
-		$each(options.planes, function(plane, key){ //keys: width, height, planes: ['left', 'right'], ['top','bottom']
-			var capitalized = key.capitalize();
-			size['total' + capitalized] = size['computed' + capitalized] = 0;
-			plane.each(function(edge){ //top, left, right, bottom
-				size['computed' + edge.capitalize()] = 0;
-				getStyles.each(function(style, i){ //padding, border, etc.
-					//'padding-left'.test('left') size['totalWidth'] = size['width'] + [padding-left]
-					if (style.test(edge)){
-						styles[style] = styles[style].toInt() || 0; //styles['padding-left'] = 5;
-						size['total' + capitalized] = size['total' + capitalized] + styles[style];
-						size['computed' + edge.capitalize()] = size['computed' + edge.capitalize()] + styles[style];
-					}
-					//if width != width (so, padding-left, for instance), then subtract that from the total
-					if (style.test(edge) && key != style &&
-						(style.test('border') || style.test('padding')) && !subtracted.contains(style)){
-						subtracted.push(style);
-						size['computed' + capitalized] = size['computed' + capitalized]-styles[style];
-					}
-				});
-			});
-		});
 
-		['Width', 'Height'].each(function(value){
-			var lower = value.toLowerCase();
-			if(!$chk(size[lower])) return;
-
-			size[lower] = size[lower] + this['offset' + value] + size['computed' + value];
-			size['total' + value] = size[lower] + size['total' + value];
-			delete size['computed' + value];
+		getStylesList(options.styles, options.planes).each(function(style){
+			styles[style] = this.getStyle(style).toInt();
 		}, this);
 
-		return $extend(styles, size);
+		Object.each(options.planes, function(edges, plane){
+
+			var capitalized = plane.capitalize(),
+				style = this.getStyle(plane);
+
+			if (style == 'auto' && !dimensions) dimensions = this.getDimensions();
+
+			style = styles[plane] = (style == 'auto') ? dimensions[plane] : style.toInt();
+			size['total' + capitalized] = style;
+
+			edges.each(function(edge){
+				var edgesize = calculateEdgeSize(edge, styles);
+				size['computed' + edge.capitalize()] = edgesize;
+				size['total' + capitalized] += edgesize;
+			});
+
+		}, this);
+
+		return Object.append(size, styles);
 	}
 
 });
+
+})();
+
 
 /*
 ---
@@ -297,202 +336,6 @@ Fx.Elements = new Class({
 /*
 ---
 
-script: Fx.Accordion.js
-
-name: Fx.Accordion
-
-description: An Fx.Elements extension which allows you to easily create accordion type controls.
-
-license: MIT-style license
-
-authors:
-  - Valerio Proietti
-
-requires:
-  - Core/Element.Event
-  - /Fx.Elements
-
-provides: [Fx.Accordion]
-
-...
-*/
-
-Fx.Accordion = new Class({
-
-	Extends: Fx.Elements,
-
-	options: {/*
-		onActive: $empty(toggler, section),
-		onBackground: $empty(toggler, section),
-		*/
-		fixedHeight: false,
-		fixedWidth: false,
-		display: 0,
-		show: false,
-		height: true,
-		width: false,
-		opacity: true,
-		alwaysHide: false,
-		trigger: 'click',
-		initialDisplayFx: true,
-		returnHeightToAuto: true
-	},
-
-	initialize: function(){
-		var params = Array.link(arguments, {
-			'container': Element.type, //deprecated
-			'options': Object.type,
-			'togglers': $defined,
-			'elements': $defined
-		});
-		this.parent(params.elements, params.options);
-		this.togglers = $$(params.togglers);
-		this.previous = -1;
-		this.internalChain = new Chain();
-		if (this.options.alwaysHide) this.options.wait = true;
-		if ($chk(this.options.show)){
-			this.options.display = false;
-			this.previous = this.options.show;
-		}
-		if (this.options.start){
-			this.options.display = false;
-			this.options.show = false;
-		}
-		this.effects = {};
-		if (this.options.opacity) this.effects.opacity = 'fullOpacity';
-		if (this.options.width) this.effects.width = this.options.fixedWidth ? 'fullWidth' : 'offsetWidth';
-		if (this.options.height) this.effects.height = this.options.fixedHeight ? 'fullHeight' : 'scrollHeight';
-		for (var i = 0, l = this.togglers.length; i < l; i++) this.addSection(this.togglers[i], this.elements[i]);
-		this.elements.each(function(el, i){
-			if (this.options.show === i){
-				this.fireEvent('active', [this.togglers[i], el]);
-			} else {
-				for (var fx in this.effects) el.setStyle(fx, 0);
-			}
-		}, this);
-		if ($chk(this.options.display) || this.options.initialDisplayFx === false) this.display(this.options.display, this.options.initialDisplayFx);
-		if (this.options.fixedHeight !== false) this.options.returnHeightToAuto = false;
-		this.addEvent('complete', this.internalChain.callChain.bind(this.internalChain));
-	},
-
-	addSection: function(toggler, element){
-		toggler = document.id(toggler);
-		element = document.id(element);
-		var test = this.togglers.contains(toggler);
-		this.togglers.include(toggler);
-		this.elements.include(element);
-		var idx = this.togglers.indexOf(toggler);
-		var displayer = this.display.bind(this, idx);
-		toggler.store('accordion:display', displayer);
-		toggler.addEvent(this.options.trigger, displayer);
-		if (this.options.height) element.setStyles({'padding-top': 0, 'border-top': 'none', 'padding-bottom': 0, 'border-bottom': 'none'});
-		if (this.options.width) element.setStyles({'padding-left': 0, 'border-left': 'none', 'padding-right': 0, 'border-right': 'none'});
-		element.fullOpacity = 1;
-		if (this.options.fixedWidth) element.fullWidth = this.options.fixedWidth;
-		if (this.options.fixedHeight) element.fullHeight = this.options.fixedHeight;
-		element.setStyle('overflow', 'hidden');
-		if (!test){
-			for (var fx in this.effects) element.setStyle(fx, 0);
-		}
-		return this;
-	},
-
-	removeSection: function(toggler, displayIndex) {
-		var idx = this.togglers.indexOf(toggler);
-		var element = this.elements[idx];
-		var remover = function(){
-			this.togglers.erase(toggler);
-			this.elements.erase(element);
-			this.detach(toggler);
-		}.bind(this);
-		if (this.now == idx || displayIndex != undefined) this.display($pick(displayIndex, idx - 1 >= 0 ? idx - 1 : 0)).chain(remover);
-		else remover();
-		return this;
-	},
-
-	detach: function(toggler){
-		var remove = function(toggler) {
-			toggler.removeEvent(this.options.trigger, toggler.retrieve('accordion:display'));
-		}.bind(this);
-		if (!toggler) this.togglers.each(remove);
-		else remove(toggler);
-		return this;
-	},
-
-	display: function(index, useFx){
-		if (!this.check(index, useFx)) return this;
-		useFx = $pick(useFx, true);
-		index = ($type(index) == 'element') ? this.elements.indexOf(index) : index;
-		if (index == this.previous && !this.options.alwaysHide) return this;
-		if (this.options.returnHeightToAuto){
-			var prev = this.elements[this.previous];
-			if (prev && !this.selfHidden){
-				for (var fx in this.effects){
-					prev.setStyle(fx, prev[this.effects[fx]]);
-				}
-			}
-		}
-		if ((this.timer && this.options.wait) || (index === this.previous && !this.options.alwaysHide)) return this;
-		this.previous = index;
-		var obj = {};
-		this.elements.each(function(el, i){
-			obj[i] = {};
-			var hide;
-			if (i != index){
-				hide = true;
-			} else if (this.options.alwaysHide && ((el.offsetHeight > 0 && this.options.height) || el.offsetWidth > 0 && this.options.width)){
-				hide = true;
-				this.selfHidden = true;
-			}
-			this.fireEvent(hide ? 'background' : 'active', [this.togglers[i], el]);
-			for (var fx in this.effects) obj[i][fx] = hide ? 0 : el[this.effects[fx]];
-		}, this);
-		this.internalChain.clearChain();
-		this.internalChain.chain(function(){
-			if (this.options.returnHeightToAuto && !this.selfHidden){
-				var el = this.elements[index];
-				if (el) el.setStyle('height', 'auto');
-			};
-		}.bind(this));
-		return useFx ? this.start(obj) : this.set(obj);
-	}
-
-});
-
-/*
-	Compatibility with 1.2.0
-*/
-var Accordion = new Class({
-
-	Extends: Fx.Accordion,
-
-	initialize: function(){
-		this.parent.apply(this, arguments);
-		var params = Array.link(arguments, {'container': Element.type});
-		this.container = params.container;
-	},
-
-	addSection: function(toggler, element, pos){
-		toggler = document.id(toggler);
-		element = document.id(element);
-		var test = this.togglers.contains(toggler);
-		var len = this.togglers.length;
-		if (len && (!test || pos)){
-			pos = $pick(pos, len - 1);
-			toggler.inject(this.togglers[pos], 'before');
-			element.inject(toggler, 'after');
-		} else if (this.container && !test){
-			toggler.inject(this.container);
-			element.inject(this.container);
-		}
-		return this.parent.apply(this, arguments);
-	}
-
-});
-
-/*
----
-
 script: Fx.Scroll.js
 
 name: Fx.Scroll
@@ -515,6 +358,8 @@ provides: [Fx.Scroll]
 ...
 */
 
+(function(){
+
 Fx.Scroll = new Class({
 
 	Extends: Fx,
@@ -527,13 +372,12 @@ Fx.Scroll = new Class({
 	initialize: function(element, options){
 		this.element = this.subject = document.id(element);
 		this.parent(options);
-		var cancel = this.cancel.bind(this, false);
 
-		if ($type(this.element) != 'element') this.element = document.id(this.element.getDocument().body);
-
-		var stopper = this.element;
+		if (typeOf(this.element) != 'element') this.element = document.id(this.element.getDocument().body);
 
 		if (this.options.wheelStops){
+			var stopper = this.element,
+				cancel = this.cancel.pass(false, this);
 			this.addEvent('start', function(){
 				stopper.addEvent('mousewheel', cancel);
 			}, true);
@@ -545,8 +389,9 @@ Fx.Scroll = new Class({
 
 	set: function(){
 		var now = Array.flatten(arguments);
-		if (Browser.Engine.gecko) now = [Math.round(now[0]), Math.round(now[1])];
-		this.element.scrollTo(now[0] + this.options.offset.x, now[1] + this.options.offset.y);
+		if (Browser.firefox) now = [Math.round(now[0]), Math.round(now[1])]; // not needed anymore in newer firefox versions
+		this.element.scrollTo(now[0], now[1]);
+		return this;
 	},
 
 	compute: function(from, to, delta){
@@ -557,88 +402,117 @@ Fx.Scroll = new Class({
 
 	start: function(x, y){
 		if (!this.check(x, y)) return this;
-		var scrollSize = this.element.getScrollSize(),
-			scroll = this.element.getScroll(), 
+		var scroll = this.element.getScroll();
+		return this.parent([scroll.x, scroll.y], [x, y]);
+	},
+
+	calculateScroll: function(x, y){
+		var element = this.element,
+			scrollSize = element.getScrollSize(),
+			scroll = element.getScroll(),
+			size = element.getSize(),
+			offset = this.options.offset,
 			values = {x: x, y: y};
+
 		for (var z in values){
-			var max = scrollSize[z];
-			if ($chk(values[z])) values[z] = ($type(values[z]) == 'number') ? values[z] : max;
-			else values[z] = scroll[z];
-			values[z] += this.options.offset[z];
+			if (!values[z] && values[z] !== 0) values[z] = scroll[z];
+			if (typeOf(values[z]) != 'number') values[z] = scrollSize[z] - size[z];
+			values[z] += offset[z];
 		}
-		return this.parent([scroll.x, scroll.y], [values.x, values.y]);
+
+		return [values.x, values.y];
 	},
 
 	toTop: function(){
-		return this.start(false, 0);
+		return this.start.apply(this, this.calculateScroll(false, 0));
 	},
 
 	toLeft: function(){
-		return this.start(0, false);
+		return this.start.apply(this, this.calculateScroll(0, false));
 	},
 
 	toRight: function(){
-		return this.start('right', false);
+		return this.start.apply(this, this.calculateScroll('right', false));
 	},
 
 	toBottom: function(){
-		return this.start(false, 'bottom');
+		return this.start.apply(this, this.calculateScroll(false, 'bottom'));
 	},
 
-	toElement: function(el){
-		var position = document.id(el).getPosition(this.element);
-		return this.start(position.x, position.y);
+	toElement: function(el, axes){
+		axes = axes ? Array.from(axes) : ['x', 'y'];
+		var scroll = isBody(this.element) ? {x: 0, y: 0} : this.element.getScroll();
+		var position = Object.map(document.id(el).getPosition(this.element), function(value, axis){
+			return axes.contains(axis) ? value + scroll[axis] : false;
+		});
+		return this.start.apply(this, this.calculateScroll(position.x, position.y));
 	},
 
-	scrollIntoView: function(el, axes, offset){
-		axes = axes ? $splat(axes) : ['x','y'];
-		var to = {};
+	toElementEdge: function(el, axes, offset){
+		axes = axes ? Array.from(axes) : ['x', 'y'];
 		el = document.id(el);
-		var pos = el.getPosition(this.element);
-		var size = el.getSize();
-		var scroll = this.element.getScroll();
-		var containerSize = this.element.getSize();
-		var edge = {
-			x: pos.x + size.x,
-			y: pos.y + size.y
-		};
-		['x','y'].each(function(axis) {
-			if (axes.contains(axis)) {
-				if (edge[axis] > scroll[axis] + containerSize[axis]) to[axis] = edge[axis] - containerSize[axis];
-				if (pos[axis] < scroll[axis]) to[axis] = pos[axis];
-			}
-			if (to[axis] == null) to[axis] = scroll[axis];
-			if (offset && offset[axis]) to[axis] = to[axis] + offset[axis];
-		}, this);
-		if (to.x != scroll.x || to.y != scroll.y) this.start(to.x, to.y);
-		return this;
-	},
-
-	scrollToCenter: function(el, axes, offset){
-		axes = axes ? $splat(axes) : ['x', 'y'];
-		el = $(el);
 		var to = {},
-			pos = el.getPosition(this.element),
+			position = el.getPosition(this.element),
 			size = el.getSize(),
 			scroll = this.element.getScroll(),
 			containerSize = this.element.getSize(),
 			edge = {
-				x: pos.x + size.x,
-				y: pos.y + size.y
+				x: position.x + size.x,
+				y: position.y + size.y
 			};
 
-		['x','y'].each(function(axis){
-			if(axes.contains(axis)){
-				to[axis] = pos[axis] - (containerSize[axis] - size[axis])/2;
+		['x', 'y'].each(function(axis){
+			if (axes.contains(axis)){
+				if (edge[axis] > scroll[axis] + containerSize[axis]) to[axis] = edge[axis] - containerSize[axis];
+				if (position[axis] < scroll[axis]) to[axis] = position[axis];
 			}
-			if(to[axis] == null) to[axis] = scroll[axis];
-			if(offset && offset[axis]) to[axis] = to[axis] + offset[axis];
+			if (to[axis] == null) to[axis] = scroll[axis];
+			if (offset && offset[axis]) to[axis] = to[axis] + offset[axis];
 		}, this);
+
+		if (to.x != scroll.x || to.y != scroll.y) this.start(to.x, to.y);
+		return this;
+	},
+
+	toElementCenter: function(el, axes, offset){
+		axes = axes ? Array.from(axes) : ['x', 'y'];
+		el = document.id(el);
+		var to = {},
+			position = el.getPosition(this.element),
+			size = el.getSize(),
+			scroll = this.element.getScroll(),
+			containerSize = this.element.getSize();
+
+		['x', 'y'].each(function(axis){
+			if (axes.contains(axis)){
+				to[axis] = position[axis] - (containerSize[axis] - size[axis]) / 2;
+			}
+			if (to[axis] == null) to[axis] = scroll[axis];
+			if (offset && offset[axis]) to[axis] = to[axis] + offset[axis];
+		}, this);
+
 		if (to.x != scroll.x || to.y != scroll.y) this.start(to.x, to.y);
 		return this;
 	}
 
 });
+
+//<1.2compat>
+Fx.Scroll.implement({
+	scrollToCenter: function(){
+		return this.toElementCenter.apply(this, arguments);
+	},
+	scrollIntoView: function(){
+		return this.toElementEdge.apply(this, arguments);
+	}
+});
+//</1.2compat>
+
+function isBody(element){
+	return (/^(?:body|html)$/i).test(element.tagName);
+}
+
+})();
 
 
 /*
@@ -677,23 +551,31 @@ Fx.Slide = new Class({
 	},
 
 	initialize: function(element, options){
-		this.addEvent('complete', function(){
-			this.open = (this.wrapper['offset' + this.layout.capitalize()] != 0);
-			if (this.open && this.options.resetHeight) this.wrapper.setStyle('height', '');
-			if (this.open && Browser.Engine.webkit419) this.element.dispose().inject(this.wrapper);
-		}, true);
-		this.element = this.subject = document.id(element);
+		element = this.element = this.subject = document.id(element);
 		this.parent(options);
-		var wrapper = this.element.retrieve('wrapper');
-		var styles = this.element.getStyles('margin', 'position', 'overflow');
-		if (this.options.hideOverflow) styles = $extend(styles, {overflow: 'hidden'});
-		if (this.options.wrapper) wrapper = document.id(this.options.wrapper).setStyles(styles);
-		this.wrapper = wrapper || new Element('div', {
+		options = this.options;
+
+		var wrapper = element.retrieve('wrapper'),
+			styles = element.getStyles('margin', 'position', 'overflow');
+
+		if (options.hideOverflow) styles = Object.append(styles, {overflow: 'hidden'});
+		if (options.wrapper) wrapper = document.id(options.wrapper).setStyles(styles);
+
+		if (!wrapper) wrapper = new Element('div', {
 			styles: styles
-		}).wraps(this.element);
-		this.element.store('wrapper', this.wrapper).setStyle('margin', 0);
+		}).wraps(element);
+
+		element.store('wrapper', wrapper).setStyle('margin', 0);
+		if (element.getStyle('overflow') == 'visible') element.setStyle('overflow', 'hidden');
+
 		this.now = [];
 		this.open = true;
+		this.wrapper = wrapper;
+
+		this.addEvent('complete', function(){
+			this.open = (wrapper['offset' + this.layout.capitalize()] != 0);
+			if (this.open && this.options.resetHeight) wrapper.setStyle('height', '');
+		}, true);
 	},
 
 	vertical: function(){
@@ -723,11 +605,13 @@ Fx.Slide = new Class({
 	start: function(how, mode){
 		if (!this.check(how, mode)) return this;
 		this[mode || this.options.mode]();
-		var margin = this.element.getStyle(this.margin).toInt();
-		var layout = this.wrapper.getStyle(this.layout).toInt();
-		var caseIn = [[margin, layout], [0, this.offset]];
-		var caseOut = [[margin, layout], [-this.offset, 0]];
-		var start;
+
+		var margin = this.element.getStyle(this.margin).toInt(),
+			layout = this.wrapper.getStyle(this.layout).toInt(),
+			caseIn = [[margin, layout], [0, this.offset]],
+			caseOut = [[margin, layout], [-this.offset, 0]],
+			start;
+
 		switch (how){
 			case 'in': start = caseIn; break;
 			case 'out': start = caseOut; break;
@@ -765,17 +649,17 @@ Fx.Slide = new Class({
 Element.Properties.slide = {
 
 	set: function(options){
-		var slide = this.retrieve('slide');
-		if (slide) slide.cancel();
-		return this.eliminate('slide').store('slide:options', $extend({link: 'cancel'}, options));
+		this.get('slide').cancel().setOptions(options);
+		return this;
 	},
 
-	get: function(options){
-		if (options || !this.retrieve('slide')){
-			if (options || !this.retrieve('slide:options')) this.set('slide', options);
-			this.store('slide', new Fx.Slide(this, this.retrieve('slide:options')));
+	get: function(){
+		var slide = this.retrieve('slide');
+		if (!slide){
+			slide = new Fx.Slide(this, {link: 'cancel'});
+			this.store('slide', slide);
 		}
-		return this.retrieve('slide');
+		return slide;
 	}
 
 };
@@ -818,7 +702,7 @@ authors:
   - Valerio Proietti
 
 requires:
-  - Core/Selectors
+  - Core/Slick.Finder
   - /Fx.Scroll
 
 provides: [Fx.SmoothScroll]
@@ -826,44 +710,54 @@ provides: [Fx.SmoothScroll]
 ...
 */
 
-var SmoothScroll = Fx.SmoothScroll = new Class({
+/*<1.2compat>*/var SmoothScroll = /*</1.2compat>*/Fx.SmoothScroll = new Class({
 
 	Extends: Fx.Scroll,
+
+	options: {
+		axes: ['x', 'y']
+	},
 
 	initialize: function(options, context){
 		context = context || document;
 		this.doc = context.getDocument();
-		var win = context.getWindow();
 		this.parent(this.doc, options);
-		this.links = $$(this.options.links || this.doc.links);
-		var location = win.location.href.match(/^[^#]*/)[0] + '#';
-		this.links.each(function(link){
-			if (link.href.indexOf(location) != 0) {return;}
+
+		var win = context.getWindow(),
+			location = win.location.href.match(/^[^#]*/)[0] + '#',
+			links = $$(this.options.links || this.doc.links);
+
+		links.each(function(link){
+			if (link.href.indexOf(location) != 0) return;
 			var anchor = link.href.substr(location.length);
 			if (anchor) this.useLink(link, anchor);
 		}, this);
-		if (!Browser.Engine.webkit419) {
-			this.addEvent('complete', function(){
-				win.location.hash = this.anchor;
-			}, true);
-		}
+
+		this.addEvent('complete', function(){
+			win.location.hash = this.anchor;
+			this.element.scrollTo(this.to[0], this.to[1]);
+		}, true);
 	},
 
 	useLink: function(link, anchor){
-		var el;
+
 		link.addEvent('click', function(event){
-			if (el !== false && !el) el = document.id(anchor) || this.doc.getElement('a[name=' + anchor + ']');
-			if (el) {
-				event.preventDefault();
-				this.anchor = anchor;
-				this.toElement(el).chain(function(){
-					this.fireEvent('scrolledTo', [link, el]);
-				}.bind(this));
-				link.blur();
-			}
+			var el = document.id(anchor) || this.doc.getElement('a[name=' + anchor + ']');
+			if (!el) return;
+
+			event.preventDefault();
+			this.toElement(el, this.options.axes).chain(function(){
+				this.fireEvent('scrolledTo', [link, el]);
+			}.bind(this));
+
+			this.anchor = anchor;
+
 		}.bind(this));
+
+		return this;
 	}
 });
+
 
 /*
 ---
@@ -899,12 +793,12 @@ var Drag = new Class({
 	Implements: [Events, Options],
 
 	options: {/*
-		onBeforeStart: $empty(thisElement),
-		onStart: $empty(thisElement, event),
-		onSnap: $empty(thisElement)
-		onDrag: $empty(thisElement, event),
-		onCancel: $empty(thisElement),
-		onComplete: $empty(thisElement, event),*/
+		onBeforeStart: function(thisElement){},
+		onStart: function(thisElement, event){},
+		onSnap: function(thisElement){},
+		onDrag: function(thisElement, event){},
+		onCancel: function(thisElement){},
+		onComplete: function(thisElement, event){},*/
 		snap: 6,
 		unit: 'px',
 		grid: false,
@@ -918,16 +812,28 @@ var Drag = new Class({
 	},
 
 	initialize: function(){
-		var params = Array.link(arguments, {'options': Object.type, 'element': $defined});
+		var params = Array.link(arguments, {
+			'options': Type.isObject,
+			'element': function(obj){
+				return obj != null;
+			}
+		});
+
 		this.element = document.id(params.element);
 		this.document = this.element.getDocument();
 		this.setOptions(params.options || {});
-		var htype = $type(this.options.handle);
+		var htype = typeOf(this.options.handle);
 		this.handles = ((htype == 'array' || htype == 'collection') ? $$(this.options.handle) : document.id(this.options.handle)) || this.element;
 		this.mouse = {'now': {}, 'pos': {}};
 		this.value = {'start': {}, 'now': {}};
 
-		this.selection = (Browser.Engine.trident) ? 'selectstart' : 'mousedown';
+		this.selection = (Browser.ie) ? 'selectstart' : 'mousedown';
+
+
+		if (Browser.ie && !Drag.ondragstartFixed){
+			document.ondragstart = Function.from(false);
+			Drag.ondragstartFixed = true;
+		}
 
 		this.bound = {
 			start: this.start.bind(this),
@@ -935,7 +841,7 @@ var Drag = new Class({
 			drag: this.drag.bind(this),
 			stop: this.stop.bind(this),
 			cancel: this.cancel.bind(this),
-			eventStop: $lambda(false)
+			eventStop: Function.from(false)
 		};
 		this.attach();
 	},
@@ -951,51 +857,58 @@ var Drag = new Class({
 	},
 
 	start: function(event){
+		var options = this.options;
+
 		if (event.rightClick) return;
-		if (this.options.preventDefault) event.preventDefault();
-		if (this.options.stopPropagation) event.stopPropagation();
+
+		if (options.preventDefault) event.preventDefault();
+		if (options.stopPropagation) event.stopPropagation();
 		this.mouse.start = event.page;
+
 		this.fireEvent('beforeStart', this.element);
-		var limit = this.options.limit;
+
+		var limit = options.limit;
 		this.limit = {x: [], y: []};
-		var styles = this.element.getStyles('left', 'right', 'top', 'bottom');
-		this._invert = {
-			x: this.options.modifiers.x == 'left' && styles.left == 'auto' &&
-			   !isNaN(styles.right.toInt()) && (this.options.modifiers.x = 'right'),
-			y: this.options.modifiers.y == 'top' && styles.top == 'auto' &&
-			   !isNaN(styles.bottom.toInt()) && (this.options.modifiers.y = 'bottom')
-		};
 
 		var z, coordinates;
-		for (z in this.options.modifiers){
-			if (!this.options.modifiers[z]) continue;
+		for (z in options.modifiers){
+			if (!options.modifiers[z]) continue;
 
-			var style = this.element.getStyle(this.options.modifiers[z]);
+			var style = this.element.getStyle(options.modifiers[z]);
 
 			// Some browsers (IE and Opera) don't always return pixels.
 			if (style && !style.match(/px$/)){
 				if (!coordinates) coordinates = this.element.getCoordinates(this.element.getOffsetParent());
-				style = coordinates[this.options.modifiers[z]];
+				style = coordinates[options.modifiers[z]];
 			}
 
-			if (this.options.style) this.value.now[z] = (style || 0).toInt();
-			else this.value.now[z] = this.element[this.options.modifiers[z]];
+			if (options.style) this.value.now[z] = (style || 0).toInt();
+			else this.value.now[z] = this.element[options.modifiers[z]];
 
-			if (this.options.invert) this.value.now[z] *= -1;
-			if (this._invert[z]) this.value.now[z] *= -1;
+			if (options.invert) this.value.now[z] *= -1;
 
 			this.mouse.pos[z] = event.page[z] - this.value.now[z];
 
 			if (limit && limit[z]){
-				for (var i = 2; i--; i){
-					if ($chk(limit[z][i])) this.limit[z][i] = $lambda(limit[z][i])();
+				var i = 2;
+				while (i--){
+					var limitZI = limit[z][i];
+					if (limitZI || limitZI === 0) this.limit[z][i] = (typeof limitZI == 'function') ? limitZI() : limitZI;
 				}
 			}
 		}
 
-		if ($type(this.options.grid) == 'number') this.options.grid = {x: this.options.grid, y: this.options.grid};
-		this.document.addEvents({mousemove: this.bound.check, mouseup: this.bound.cancel});
-		this.document.addEvent(this.selection, this.bound.eventStop);
+		if (typeOf(this.options.grid) == 'number') this.options.grid = {
+			x: this.options.grid,
+			y: this.options.grid
+		};
+
+		var events = {
+			mousemove: this.bound.check,
+			mouseup: this.bound.cancel
+		};
+		events[this.selection] = this.bound.eventStop;
+		this.document.addEvents(events);
 	},
 
 	check: function(event){
@@ -1012,33 +925,39 @@ var Drag = new Class({
 	},
 
 	drag: function(event){
-		if (this.options.preventDefault) event.preventDefault();
+		var options = this.options;
+
+		if (options.preventDefault) event.preventDefault();
 		this.mouse.now = event.page;
-		for (var z in this.options.modifiers){
-			if (!this.options.modifiers[z]) continue;
+
+		for (var z in options.modifiers){
+			if (!options.modifiers[z]) continue;
 			this.value.now[z] = this.mouse.now[z] - this.mouse.pos[z];
-			if (this.options.invert) this.value.now[z] *= -1;
-			if (this._invert[z]) this.value.now[z] *= -1;
-			if (this.options.limit && this.limit[z]){
-				if ($chk(this.limit[z][1]) && (this.value.now[z] > this.limit[z][1])){
+
+			if (options.invert) this.value.now[z] *= -1;
+
+			if (options.limit && this.limit[z]){
+				if ((this.limit[z][1] || this.limit[z][1] === 0) && (this.value.now[z] > this.limit[z][1])){
 					this.value.now[z] = this.limit[z][1];
-				} else if ($chk(this.limit[z][0]) && (this.value.now[z] < this.limit[z][0])){
+				} else if ((this.limit[z][0] || this.limit[z][0] === 0) && (this.value.now[z] < this.limit[z][0])){
 					this.value.now[z] = this.limit[z][0];
 				}
 			}
-			if (this.options.grid[z]) this.value.now[z] -= ((this.value.now[z] - (this.limit[z][0]||0)) % this.options.grid[z]);
-			if (this.options.style) {
-				this.element.setStyle(this.options.modifiers[z], this.value.now[z] + this.options.unit);
-			} else {
-				this.element[this.options.modifiers[z]] = this.value.now[z];
-			}
+
+			if (options.grid[z]) this.value.now[z] -= ((this.value.now[z] - (this.limit[z][0]||0)) % options.grid[z]);
+
+			if (options.style) this.element.setStyle(options.modifiers[z], this.value.now[z] + options.unit);
+			else this.element[options.modifiers[z]] = this.value.now[z];
 		}
+
 		this.fireEvent('drag', [this.element, event]);
 	},
 
 	cancel: function(event){
-		this.document.removeEvent('mousemove', this.bound.check);
-		this.document.removeEvent('mouseup', this.bound.cancel);
+		this.document.removeEvents({
+			mousemove: this.bound.check,
+			mouseup: this.bound.cancel
+		});
 		if (event){
 			this.document.removeEvent(this.selection, this.bound.eventStop);
 			this.fireEvent('cancel', this.element);
@@ -1046,9 +965,12 @@ var Drag = new Class({
 	},
 
 	stop: function(event){
-		this.document.removeEvent(this.selection, this.bound.eventStop);
-		this.document.removeEvent('mousemove', this.bound.drag);
-		this.document.removeEvent('mouseup', this.bound.stop);
+		var events = {
+			mousemove: this.bound.drag,
+			mouseup: this.bound.stop
+		};
+		events[this.selection] = this.bound.eventStop;
+		this.document.removeEvents(events);
 		if (event) this.fireEvent('complete', [this.element, event]);
 	}
 
@@ -1057,7 +979,13 @@ var Drag = new Class({
 Element.implement({
 
 	makeResizable: function(options){
-		var drag = new Drag(this, $merge({modifiers: {x: 'width', y: 'height'}}, options));
+		var drag = new Drag(this, Object.merge({
+			modifiers: {
+				x: 'width',
+				y: 'height'
+			}
+		}, options));
+
 		this.store('resizer', drag);
 		return drag.addEvent('drag', function(){
 			this.fireEvent('resize', drag);
@@ -1099,9 +1027,9 @@ Drag.Move = new Class({
 	Extends: Drag,
 
 	options: {/*
-		onEnter: $empty(thisElement, overed),
-		onLeave: $empty(thisElement, overed),
-		onDrop: $empty(thisElement, overed, event),*/
+		onEnter: function(thisElement, overed){},
+		onLeave: function(thisElement, overed){},
+		onDrop: function(thisElement, overed, event){},*/
 		droppables: [],
 		container: false,
 		precalculate: false,
@@ -1112,68 +1040,63 @@ Drag.Move = new Class({
 	initialize: function(element, options){
 		this.parent(element, options);
 		element = this.element;
-		
+
 		this.droppables = $$(this.options.droppables);
 		this.container = document.id(this.options.container);
-		
-		if (this.container && $type(this.container) != 'element')
+
+		if (this.container && typeOf(this.container) != 'element')
 			this.container = document.id(this.container.getDocument().body);
 
 		if (this.options.style){
-			if (this.options.modifiers.x == "left" && this.options.modifiers.y == "top"){
-				var parentStyles,
-					parent = document.id(element.getOffsetParent());
-				if (parent) parentStyles = parent.getStyles('border-top-width', 'border-left-width');
-
-				var styles = element.getStyles('left', 'top');
+			if (this.options.modifiers.x == 'left' && this.options.modifiers.y == 'top'){
+				var parent = element.getOffsetParent(),
+					styles = element.getStyles('left', 'top');
 				if (parent && (styles.left == 'auto' || styles.top == 'auto')){
-					var parentPosition = element.getPosition(parent);
-					parentPosition.x = parentPosition.x - (parentStyles['border-left-width'] ? parentStyles['border-left-width'].toInt() : 0);
-					parentPosition.y = parentPosition.y - (parentStyles['border-top-width'] ? parentStyles['border-top-width'].toInt() : 0);
-					element.setPosition(parentPosition);
+					element.setPosition(element.getPosition(parent));
 				}
 			}
+
 			if (element.getStyle('position') == 'static') element.setStyle('position', 'absolute');
 		}
 
 		this.addEvent('start', this.checkDroppables, true);
-
 		this.overed = null;
 	},
 
 	start: function(event){
 		if (this.container) this.options.limit = this.calculateLimit();
-		
+
 		if (this.options.precalculate){
 			this.positions = this.droppables.map(function(el){
 				return el.getCoordinates();
 			});
 		}
-		
+
 		this.parent(event);
 	},
-	
+
 	calculateLimit: function(){
-		var offsetParent = document.id(this.element.getOffsetParent()) || document.body,
-			containerCoordinates = this.container.getCoordinates(offsetParent),
-			containerBorder = {},
+		var element = this.element,
+			container = this.container,
+
+			offsetParent = document.id(element.getOffsetParent()) || document.body,
+			containerCoordinates = container.getCoordinates(offsetParent),
 			elementMargin = {},
 			elementBorder = {},
 			containerMargin = {},
-			offsetParentBorder = {},
+			containerBorder = {},
 			offsetParentPadding = {};
 
 		['top', 'right', 'bottom', 'left'].each(function(pad){
-			containerBorder[pad] = this.container.getStyle('border-' + pad).toInt();
-			elementBorder[pad] = this.element.getStyle('border-' + pad).toInt();
-			elementMargin[pad] = this.element.getStyle('margin-' + pad).toInt();
-			containerMargin[pad] = this.container.getStyle('margin-' + pad).toInt();
+			elementMargin[pad] = element.getStyle('margin-' + pad).toInt();
+			elementBorder[pad] = element.getStyle('border-' + pad).toInt();
+			containerMargin[pad] = container.getStyle('margin-' + pad).toInt();
+			containerBorder[pad] = container.getStyle('border-' + pad).toInt();
 			offsetParentPadding[pad] = offsetParent.getStyle('padding-' + pad).toInt();
-			offsetParentBorder[pad] = offsetParent.getStyle('border-' + pad).toInt();
 		}, this);
 
-		var width = this.element.offsetWidth + elementMargin.left + elementMargin.right,
-			height = this.element.offsetHeight + elementMargin.top + elementMargin.bottom,
+		var width = element.offsetWidth + elementMargin.left + elementMargin.right,
+			height = element.offsetHeight + elementMargin.top + elementMargin.bottom,
 			left = 0,
 			top = 0,
 			right = containerCoordinates.right - containerBorder.right - width,
@@ -1186,49 +1109,59 @@ Drag.Move = new Class({
 			right += elementMargin.right;
 			bottom += elementMargin.bottom;
 		}
-		
-		if (this.element.getStyle('position') == 'relative'){
-			var coords = this.element.getCoordinates(offsetParent);
-			coords.left -= this.element.getStyle('left').toInt();
-			coords.top -= this.element.getStyle('top').toInt();
-			
-			left += containerBorder.left - coords.left;
-			top += containerBorder.top - coords.top;
+
+		if (element.getStyle('position') == 'relative'){
+			var coords = element.getCoordinates(offsetParent);
+			coords.left -= element.getStyle('left').toInt();
+			coords.top -= element.getStyle('top').toInt();
+
+			left -= coords.left;
+			top -= coords.top;
+			if (container.getStyle('position') != 'relative'){
+				left += containerBorder.left;
+				top += containerBorder.top;
+			}
 			right += elementMargin.left - coords.left;
 			bottom += elementMargin.top - coords.top;
-			
-			if (this.container != offsetParent){
+
+			if (container != offsetParent){
 				left += containerMargin.left + offsetParentPadding.left;
-				top += (Browser.Engine.trident4 ? 0 : containerMargin.top) + offsetParentPadding.top;
+				top += ((Browser.ie6 || Browser.ie7) ? 0 : containerMargin.top) + offsetParentPadding.top;
 			}
 		} else {
 			left -= elementMargin.left;
 			top -= elementMargin.top;
-			if (this.container == offsetParent){
-				right -= containerBorder.left;
-				bottom -= containerBorder.top;
-			} else {
-				left += containerCoordinates.left + containerBorder.left - offsetParentBorder.left;
-				top += containerCoordinates.top + containerBorder.top - offsetParentBorder.top;
-				right -= offsetParentBorder.left;
-				bottom -= offsetParentBorder.top;
+			if (container != offsetParent){
+				left += containerCoordinates.left + containerBorder.left;
+				top += containerCoordinates.top + containerBorder.top;
 			}
 		}
-		
+
 		return {
 			x: [left, right],
 			y: [top, bottom]
 		};
 	},
 
-	checkAgainst: function(el, i){
-		el = (this.positions) ? this.positions[i] : el.getCoordinates();
-		var now = this.mouse.now;
-		return (now.x > el.left && now.x < el.right && now.y < el.bottom && now.y > el.top);
+	getDroppableCoordinates: function(element){
+		var position = element.getCoordinates();
+		if (element.getStyle('position') == 'fixed'){
+			var scroll = window.getScroll();
+			position.left += scroll.x;
+			position.right += scroll.x;
+			position.top += scroll.y;
+			position.bottom += scroll.y;
+		}
+		return position;
 	},
 
 	checkDroppables: function(){
-		var overed = this.droppables.filter(this.checkAgainst, this).getLast();
+		var overed = this.droppables.filter(function(el, i){
+			el = this.positions ? this.positions[i] : this.getDroppableCoordinates(el);
+			var now = this.mouse.now;
+			return (now.x > el.left && now.x < el.right && now.y < el.bottom && now.y > el.top);
+		}, this).getLast();
+
 		if (this.overed != overed){
 			if (this.overed) this.fireEvent('leave', [this.element, this.overed]);
 			if (overed) this.fireEvent('enter', [this.element, overed]);
@@ -1293,12 +1226,11 @@ var Slider = new Class({
 	Binds: ['clickedElement', 'draggedKnob', 'scrolledElement'],
 
 	options: {/*
-		onTick: $empty(intPosition),
-		onChange: $empty(intStep),
-		onComplete: $empty(strStep),*/
+		onTick: function(intPosition){},
+		onChange: function(intStep){},
+		onComplete: function(strStep){},*/
 		onTick: function(position){
-			if (this.options.snap) position = this.toPosition(this.step);
-			this.knob.setStyle(this.property, position);
+			this.setKnobPosition(position);
 		},
 		initialStep: 0,
 		snap: false,
@@ -1311,32 +1243,33 @@ var Slider = new Class({
 
 	initialize: function(element, knob, options){
 		this.setOptions(options);
+		options = this.options;
 		this.element = document.id(element);
-		this.knob = document.id(knob);
+		knob = this.knob = document.id(knob);
 		this.previousChange = this.previousEnd = this.step = -1;
-		var offset, limit = {}, modifiers = {'x': false, 'y': false};
-		switch (this.options.mode){
+
+		var limit = {},
+			modifiers = {x: false, y: false};
+
+		switch (options.mode){
 			case 'vertical':
 				this.axis = 'y';
 				this.property = 'top';
-				offset = 'offsetHeight';
+				this.offset = 'offsetHeight';
 				break;
 			case 'horizontal':
 				this.axis = 'x';
 				this.property = 'left';
-				offset = 'offsetWidth';
+				this.offset = 'offsetWidth';
 		}
-		
-		this.full = this.element.measure(function(){ 
-			this.half = this.knob[offset] / 2; 
-			return this.element[offset] - this.knob[offset] + (this.options.offset * 2); 
-		}.bind(this));
-		
-		this.setRange(this.options.range);
 
-		this.knob.setStyle('position', 'relative').setStyle(this.property, - this.options.offset);
+		this.setSliderDimensions();
+		this.setRange(options.range);
+
+		if (knob.getStyle('position') == 'static') knob.setStyle('position', 'relative');
+		knob.setStyle(this.property, -options.offset);
 		modifiers[this.axis] = this.property;
-		limit[this.axis] = [- this.options.offset, this.full - this.options.offset];
+		limit[this.axis] = [-options.offset, this.full - options.offset];
 
 		var dragOptions = {
 			snap: 0,
@@ -1347,7 +1280,7 @@ var Slider = new Class({
 			onBeforeStart: (function(){
 				this.isDragging = true;
 			}).bind(this),
-			onCancel: function() {
+			onCancel: function(){
 				this.isDragging = false;
 			}.bind(this),
 			onComplete: function(){
@@ -1356,14 +1289,11 @@ var Slider = new Class({
 				this.end();
 			}.bind(this)
 		};
-		if (this.options.snap){
-			dragOptions.grid = Math.ceil(this.stepWidth);
-			dragOptions.limit[this.axis][1] = this.full;
-		}
+		if (options.snap) this.setSnap(dragOptions);
 
-		this.drag = new Drag(this.knob, dragOptions);
+		this.drag = new Drag(knob, dragOptions);
 		this.attach();
-		if (this.options.initialStep != null) this.set(this.options.initialStep)
+		if (options.initialStep != null) this.set(options.initialStep);
 	},
 
 	attach: function(){
@@ -1374,9 +1304,38 @@ var Slider = new Class({
 	},
 
 	detach: function(){
-		this.element.removeEvent('mousedown', this.clickedElement);
-		this.element.removeEvent('mousewheel', this.scrolledElement);
+		this.element.removeEvent('mousedown', this.clickedElement)
+			.removeEvent('mousewheel', this.scrolledElement);
 		this.drag.detach();
+		return this;
+	},
+
+	autosize: function(){
+		this.setSliderDimensions()
+			.setKnobPosition(this.toPosition(this.step));
+		this.drag.options.limit[this.axis] = [-this.options.offset, this.full - this.options.offset];
+		if (this.options.snap) this.setSnap();
+		return this;
+	},
+
+	setSnap: function(options){
+		if (!options) options = this.drag.options;
+		options.grid = Math.ceil(this.stepWidth);
+		options.limit[this.axis][1] = this.full;
+		return this;
+	},
+
+	setKnobPosition: function(position){
+		if (this.options.snap) position = this.toPosition(this.step);
+		this.knob.setStyle(this.property, position);
+		return this;
+	},
+
+	setSliderDimensions: function(){
+		this.full = this.element.measure(function(){
+			this.half = this.knob[this.offset] / 2;
+			return this.element[this.offset] - this.knob[this.offset] + (this.options.offset * 2);
+		}.bind(this));
 		return this;
 	},
 
@@ -1385,62 +1344,69 @@ var Slider = new Class({
 		if (!((this.range > 0) ^ (step > this.max))) step = this.max;
 
 		this.step = Math.round(step);
-		this.checkStep();
-		this.fireEvent('tick', this.toPosition(this.step));
-		this.end();
-		return this;
+		return this.checkStep()
+			.fireEvent('tick', this.toPosition(this.step))
+			.end();
 	},
-	
+
 	setRange: function(range, pos){
-		this.min = $pick(range[0], 0);
-		this.max = $pick(range[1], this.options.steps);
+		this.min = Array.pick([range[0], 0]);
+		this.max = Array.pick([range[1], this.options.steps]);
 		this.range = this.max - this.min;
 		this.steps = this.options.steps || this.full;
 		this.stepSize = Math.abs(this.range) / this.steps;
 		this.stepWidth = this.stepSize * this.full / Math.abs(this.range);
-		this.set($pick(pos, this.step).floor(this.min).max(this.max));
+		if (range) this.set(Array.pick([pos, this.step]).floor(this.min).max(this.max));
 		return this;
 	},
 
 	clickedElement: function(event){
 		if (this.isDragging || event.target == this.knob) return;
 
-		var dir = this.range < 0 ? -1 : 1;
-		var position = event.page[this.axis] - this.element.getPosition()[this.axis] - this.half;
-		position = position.limit(-this.options.offset, this.full -this.options.offset);
+		var dir = this.range < 0 ? -1 : 1,
+			position = event.page[this.axis] - this.element.getPosition()[this.axis] - this.half;
+
+		position = position.limit(-this.options.offset, this.full - this.options.offset);
 
 		this.step = Math.round(this.min + dir * this.toStep(position));
-		this.checkStep();
-		this.fireEvent('tick', position);
-		this.end();
+
+		this.checkStep()
+			.fireEvent('tick', position)
+			.end();
 	},
 
 	scrolledElement: function(event){
 		var mode = (this.options.mode == 'horizontal') ? (event.wheel < 0) : (event.wheel > 0);
-		this.set(mode ? this.step - this.stepSize : this.step + this.stepSize);
+		this.set(this.step + (mode ? -1 : 1) * this.stepSize);
 		event.stop();
 	},
 
 	draggedKnob: function(){
-		var dir = this.range < 0 ? -1 : 1;
-		var position = this.drag.value.now[this.axis];
+		var dir = this.range < 0 ? -1 : 1,
+			position = this.drag.value.now[this.axis];
+
 		position = position.limit(-this.options.offset, this.full -this.options.offset);
+
 		this.step = Math.round(this.min + dir * this.toStep(position));
 		this.checkStep();
 	},
 
 	checkStep: function(){
-		if (this.previousChange != this.step){
-			this.previousChange = this.step;
-			this.fireEvent('change', this.step);
+		var step = this.step;
+		if (this.previousChange != step){
+			this.previousChange = step;
+			this.fireEvent('change', step);
 		}
+		return this;
 	},
 
 	end: function(){
-		if (this.previousEnd !== this.step){
-			this.previousEnd = this.step;
-			this.fireEvent('complete', this.step + '');
+		var step = this.step;
+		if (this.previousEnd !== step){
+			this.previousEnd = step;
+			this.fireEvent('complete', step + '');
 		}
+		return this;
 	},
 
 	toStep: function(position){
@@ -1470,6 +1436,7 @@ authors:
   - Tom Occhino
 
 requires:
+  - Core/Fx.Morph
   - /Drag.Move
 
 provides: [Sortables]
@@ -1482,27 +1449,34 @@ var Sortables = new Class({
 	Implements: [Events, Options],
 
 	options: {/*
-		onSort: $empty(element, clone),
-		onStart: $empty(element, clone),
-		onComplete: $empty(element),*/
-		snap: 4,
+		onSort: function(element, clone){},
+		onStart: function(element, clone){},
+		onComplete: function(element){},*/
 		opacity: 1,
 		clone: false,
 		revert: false,
 		handle: false,
+		dragOptions: {}/*<1.2compat>*/,
+		snap: 4,
 		constrain: false,
 		preventDefault: false
+		/*</1.2compat>*/
 	},
 
 	initialize: function(lists, options){
 		this.setOptions(options);
+
 		this.elements = [];
 		this.lists = [];
 		this.idle = true;
 
 		this.addLists($$(document.id(lists) || lists));
+
 		if (!this.options.clone) this.options.revert = false;
-		if (this.options.revert) this.effect = new Fx.Morph(null, $merge({duration: 250, link: 'cancel'}, this.options.revert));
+		if (this.options.revert) this.effect = new Fx.Morph(null, Object.merge({
+			duration: 250,
+			link: 'cancel'
+		}, this.options.revert));
 	},
 
 	attach: function(){
@@ -1518,7 +1492,9 @@ var Sortables = new Class({
 	addItems: function(){
 		Array.flatten(arguments).each(function(element){
 			this.elements.push(element);
-			var start = element.retrieve('sortables:start', this.start.bindWithEvent(this, element));
+			var start = element.retrieve('sortables:start', function(event){
+				this.start.call(this, event, element);
+			}.bind(this));
 			(this.options.handle ? element.getElement(this.options.handle) || element : element).addEvent('mousedown', start);
 		}, this);
 		return this;
@@ -1526,7 +1502,7 @@ var Sortables = new Class({
 
 	addLists: function(){
 		Array.flatten(arguments).each(function(list){
-			this.lists.push(list);
+			this.lists.include(list);
 			this.addItems(list.getChildren());
 		}, this);
 		return this;
@@ -1537,7 +1513,7 @@ var Sortables = new Class({
 			this.elements.erase(element);
 			var start = element.retrieve('sortables:start');
 			(this.options.handle ? element.getElement(this.options.handle) || element : element).removeEvent('mousedown', start);
-			
+
 			return element;
 		}, this));
 	},
@@ -1546,35 +1522,37 @@ var Sortables = new Class({
 		return $$(Array.flatten(arguments).map(function(list){
 			this.lists.erase(list);
 			this.removeItems(list.getChildren());
-			
+
 			return list;
 		}, this));
 	},
 
 	getClone: function(event, element){
 		if (!this.options.clone) return new Element(element.tagName).inject(document.body);
-		if ($type(this.options.clone) == 'function') return this.options.clone.call(this, event, element, this.list);
+		if (typeOf(this.options.clone) == 'function') return this.options.clone.call(this, event, element, this.list);
 		var clone = element.clone(true).setStyles({
-			margin: '0px',
+			margin: 0,
 			position: 'absolute',
 			visibility: 'hidden',
-			'width': element.getStyle('width')
+			width: element.getStyle('width')
+		}).addEvent('mousedown', function(event){
+			element.fireEvent('mousedown', event);
 		});
 		//prevent the duplicated radio inputs from unchecking the real one
-		if (clone.get('html').test('radio')) {
-			clone.getElements('input[type=radio]').each(function(input, i) {
+		if (clone.get('html').test('radio')){
+			clone.getElements('input[type=radio]').each(function(input, i){
 				input.set('name', 'clone_' + i);
 				if (input.get('checked')) element.getElements('input[type=radio]')[i].set('checked', true);
 			});
 		}
-		
+
 		return clone.inject(this.list).setPosition(element.getPosition(element.getOffsetParent()));
 	},
 
 	getDroppables: function(){
-		var droppables = this.list.getChildren();
-		if (!this.options.constrain) droppables = this.lists.concat(droppables).erase(this.list);
-		return droppables.erase(this.clone).erase(this.element);
+		var droppables = this.list.getChildren().erase(this.clone).erase(this.element);
+		if (!this.options.constrain) droppables.append(this.lists).erase(this.list);
+		return droppables;
 	},
 
 	insert: function(dragging, element){
@@ -1593,28 +1571,31 @@ var Sortables = new Class({
 		if (
 			!this.idle ||
 			event.rightClick ||
-			['button', 'input'].contains(document.id(event.target).get('tag'))
+			['button', 'input', 'a', 'textarea'].contains(event.target.get('tag'))
 		) return;
 
 		this.idle = false;
 		this.element = element;
-		this.opacity = element.get('opacity');
+		this.opacity = element.getStyle('opacity');
 		this.list = element.getParent();
 		this.clone = this.getClone(event, element);
 
-		this.drag = new Drag.Move(this.clone, {
+		this.drag = new Drag.Move(this.clone, Object.merge({
+			/*<1.2compat>*/
 			preventDefault: this.options.preventDefault,
 			snap: this.options.snap,
 			container: this.options.constrain && this.element.getParent(),
-			droppables: this.getDroppables(),
+			/*</1.2compat>*/
+			droppables: this.getDroppables()
+		}, this.options.dragOptions)).addEvents({
 			onSnap: function(){
 				event.stop();
 				this.clone.setStyle('visibility', 'visible');
-				this.element.set('opacity', this.options.opacity || 0);
+				this.element.setStyle('opacity', this.options.opacity || 0);
 				this.fireEvent('start', [this.element, this.clone]);
 			}.bind(this),
 			onEnter: this.insert.bind(this),
-			onCancel: this.reset.bind(this),
+			onCancel: this.end.bind(this),
 			onComplete: this.end.bind(this)
 		});
 
@@ -1624,31 +1605,43 @@ var Sortables = new Class({
 
 	end: function(){
 		this.drag.detach();
-		this.element.set('opacity', this.opacity);
+		this.element.setStyle('opacity', this.opacity);
 		if (this.effect){
-			var dim = this.element.getStyles('width', 'height');
-			var pos = this.clone.computePosition(this.element.getPosition(this.clone.getOffsetParent()));
-			this.effect.element = this.clone;
+			var dim = this.element.getStyles('width', 'height'),
+				clone = this.clone,
+				pos = clone.computePosition(this.element.getPosition(this.clone.getOffsetParent()));
+
+			var destroy = function(){
+				this.removeEvent('cancel', destroy);
+				clone.destroy();
+			};
+
+			this.effect.element = clone;
 			this.effect.start({
 				top: pos.top,
 				left: pos.left,
 				width: dim.width,
 				height: dim.height,
 				opacity: 0.25
-			}).chain(this.reset.bind(this));
+			}).addEvent('cancel', destroy).chain(destroy);
 		} else {
-			this.reset();
+			this.clone.destroy();
 		}
+		this.reset();
 	},
 
 	reset: function(){
 		this.idle = true;
-		this.clone.destroy();
 		this.fireEvent('complete', this.element);
 	},
 
 	serialize: function(){
-		var params = Array.link(arguments, {modifier: Function.type, index: $defined});
+		var params = Array.link(arguments, {
+			modifier: Type.isFunction,
+			index: function(obj){
+				return obj != null;
+			}
+		});
 		var serial = this.lists.map(function(list){
 			return list.getChildren().map(params.modifier || function(element){
 				return element.get('id');
@@ -1657,7 +1650,7 @@ var Sortables = new Class({
 
 		var index = params.index;
 		if (this.lists.length == 1) index = 0;
-		return $chk(index) && index >= 0 && index < this.lists.length ? serial[index] : serial;
+		return (index || index === 0) && index >= 0 && index < this.lists.length ? serial[index] : serial;
 	}
 
 });
@@ -1689,75 +1682,64 @@ provides: [Assets]
 var Asset = {
 
 	javascript: function(source, properties){
-		properties = $extend({
-			onload: $empty,
-			document: document,
-			check: $lambda(true)
-		}, properties);
-		
-		if (properties.onLoad) {
-			properties.onload = properties.onLoad;
-			delete properties.onLoad;
-		}
-		var script = new Element('script', {src: source, type: 'text/javascript'});
+		if (!properties) properties = {};
 
-		var load = properties.onload.bind(script), 
-			check = properties.check, 
-			doc = properties.document;
+		var script = new Element('script', {src: source, type: 'text/javascript'}),
+			doc = properties.document || document,
+			load = properties.onload || properties.onLoad;
+
 		delete properties.onload;
-		delete properties.check;
+		delete properties.onLoad;
 		delete properties.document;
 
-		script.addEvents({
-			load: load,
-			readystatechange: function(){
-				if (['loaded', 'complete'].contains(this.readyState)) load();
+		if (load){
+			if (typeof script.onreadystatechange != 'undefined'){
+				script.addEvent('readystatechange', function(){
+					if (['loaded', 'complete'].contains(this.readyState)) load.call(this);
+				});
+			} else {
+				script.addEvent('load', load);
 			}
-		}).set(properties);
+		}
 
-		if (Browser.Engine.webkit419) var checker = (function(){
-			if (!$try(check)) return;
-			$clear(checker);
-			load();
-		}).periodical(50);
-
-		return script.inject(doc.head);
+		return script.set(properties).inject(doc.head);
 	},
 
 	css: function(source, properties){
-		properties = properties || {};
-		var onload = properties.onload || properties.onLoad;
-		if (onload) {
-			properties.events = properties.events || {};
-			properties.events.load = onload;
-			delete properties.onload;
-			delete properties.onLoad;
-		}
-		return new Element('link', $merge({
+		if (!properties) properties = {};
+
+		var link = new Element('link', {
 			rel: 'stylesheet',
 			media: 'screen',
 			type: 'text/css',
 			href: source
-		}, properties)).inject(document.head);
+		});
+
+		var load = properties.onload || properties.onLoad,
+			doc = properties.document || document;
+
+		delete properties.onload;
+		delete properties.onLoad;
+		delete properties.document;
+
+		if (load) link.addEvent('load', load);
+		return link.set(properties).inject(doc.head);
 	},
 
 	image: function(source, properties){
-		properties = $merge({
-			onload: $empty,
-			onabort: $empty,
-			onerror: $empty
-		}, properties);
-		var image = new Image();
-		var element = document.id(image) || new Element('img');
+		if (!properties) properties = {};
+
+		var image = new Image(),
+			element = document.id(image) || new Element('img');
+
 		['load', 'abort', 'error'].each(function(name){
-			var type = 'on' + name;
-			var cap = name.capitalize();
-			if (properties['on' + cap]) {
-				properties[type] = properties['on' + cap];
-				delete properties['on' + cap];
-			}
-			var event = properties[type];
+			var type = 'on' + name,
+				cap = 'on' + name.capitalize(),
+				event = properties[type] || properties[cap] || function(){};
+
+			delete properties[cap];
 			delete properties[type];
+
 			image[type] = function(){
 				if (!image) return;
 				if (!element.parentNode){
@@ -1769,31 +1751,35 @@ var Asset = {
 				element.fireEvent(name, element, 1);
 			};
 		});
+
 		image.src = element.src = source;
 		if (image && image.complete) image.onload.delay(1);
 		return element.set(properties);
 	},
 
 	images: function(sources, options){
-		options = $merge({
-			onComplete: $empty,
-			onProgress: $empty,
-			onError: $empty,
+		sources = Array.from(sources);
+
+		var fn = function(){},
+			counter = 0;
+
+		options = Object.merge({
+			onComplete: fn,
+			onProgress: fn,
+			onError: fn,
 			properties: {}
 		}, options);
-		sources = $splat(sources);
-		var images = [];
-		var counter = 0;
+
 		return new Elements(sources.map(function(source, index){
-			return Asset.image(source, $extend(options.properties, {
+			return Asset.image(source, Object.append(options.properties, {
 				onload: function(){
-					options.onProgress.call(this, counter, index);
 					counter++;
+					options.onProgress.call(this, counter, index, source);
 					if (counter == sources.length) options.onComplete();
 				},
 				onerror: function(){
-					options.onError.call(this, counter, index);
 					counter++;
+					options.onError.call(this, counter, index, source);
 					if (counter == sources.length) options.onComplete();
 				}
 			}));
@@ -1801,6 +1787,7 @@ var Asset = {
 	}
 
 };
+
 
 /*
 ---
@@ -1822,45 +1809,43 @@ requires:
   - Core/Number
   - Core/Hash
   - Core/Function
-  - Core/$util
+  - MooTools.More
 
 provides: [Color]
 
 ...
 */
 
-var Color = new Native({
+(function(){
 
-	initialize: function(color, type){
-		if (arguments.length >= 3){
-			type = 'rgb'; color = Array.slice(arguments, 0, 3);
-		} else if (typeof color == 'string'){
-			if (color.match(/rgb/)) color = color.rgbToHex().hexToRgb(true);
-			else if (color.match(/hsb/)) color = color.hsbToRgb();
-			else color = color.hexToRgb(true);
-		}
-		type = type || 'rgb';
-		switch (type){
-			case 'hsb':
-				var old = color;
-				color = color.hsbToRgb();
-				color.hsb = old;
-			break;
-			case 'hex': color = color.hexToRgb(true); break;
-		}
-		color.rgb = color.slice(0, 3);
-		color.hsb = color.hsb || color.rgbToHsb();
-		color.hex = color.rgbToHex();
-		return $extend(color, this);
+var Color = this.Color = new Type('Color', function(color, type){
+	if (arguments.length >= 3){
+		type = 'rgb'; color = Array.slice(arguments, 0, 3);
+	} else if (typeof color == 'string'){
+		if (color.match(/rgb/)) color = color.rgbToHex().hexToRgb(true);
+		else if (color.match(/hsb/)) color = color.hsbToRgb();
+		else color = color.hexToRgb(true);
 	}
-
+	type = type || 'rgb';
+	switch (type){
+		case 'hsb':
+			var old = color;
+			color = color.hsbToRgb();
+			color.hsb = old;
+		break;
+		case 'hex': color = color.hexToRgb(true); break;
+	}
+	color.rgb = color.slice(0, 3);
+	color.hsb = color.hsb || color.rgbToHsb();
+	color.hex = color.rgbToHex();
+	return Object.append(color, this);
 });
 
 Color.implement({
 
 	mix: function(){
 		var colors = Array.slice(arguments);
-		var alpha = ($type(colors.getLast()) == 'number') ? colors.pop() : 50;
+		var alpha = (typeOf(colors.getLast()) == 'number') ? colors.pop() : 50;
 		var rgb = this.slice();
 		colors.each(function(color){
 			color = new Color(color);
@@ -1889,15 +1874,15 @@ Color.implement({
 
 });
 
-var $RGB = function(r, g, b){
+this.$RGB = function(r, g, b){
 	return new Color([r, g, b], 'rgb');
 };
 
-var $HSB = function(h, s, b){
+this.$HSB = function(h, s, b){
 	return new Color([h, s, b], 'hsb');
 };
 
-var $HEX = function(hex){
+this.$HEX = function(hex){
 	return new Color(hex, 'hex');
 };
 
@@ -1913,7 +1898,7 @@ Array.implement({
 		var delta = max - min;
 		var brightness = max / 255,
 				saturation = (max != 0) ? delta / max : 0;
-		if(saturation != 0) {
+		if (saturation != 0){
 			var rr = (max - red) / delta;
 			var gr = (max - green) / delta;
 			var br = (max - blue) / delta;
@@ -1964,6 +1949,9 @@ String.implement({
 
 });
 
+})();
+
+
 
 /*
 ---
@@ -1988,38 +1976,184 @@ provides: [Group]
 ...
 */
 
-var Group = new Class({
+(function(){
+
+this.Group = new Class({
 
 	initialize: function(){
 		this.instances = Array.flatten(arguments);
-		this.events = {};
-		this.checker = {};
 	},
 
 	addEvent: function(type, fn){
-		this.checker[type] = this.checker[type] || {};
-		this.events[type] = this.events[type] || [];
-		if (this.events[type].contains(fn)) return false;
-		else this.events[type].push(fn);
-		this.instances.each(function(instance, i){
-			instance.addEvent(type, this.check.bind(this, [type, instance, i]));
+		var instances = this.instances,
+			len = instances.length,
+			togo = len,
+			args = new Array(len),
+			self = this;
+
+		instances.each(function(instance, i){
+			instance.addEvent(type, function(){
+				if (!args[i]) togo--;
+				args[i] = arguments;
+				if (!togo){
+					fn.call(self, instances, instance, args);
+					togo = len;
+					args = new Array(len);
+				}
+			});
+		});
+	}
+
+});
+
+})();
+
+
+/*
+---
+
+name: Hash
+
+description: Contains Hash Prototypes. Provides a means for overcoming the JavaScript practical impossibility of extending native Objects.
+
+license: MIT-style license.
+
+requires:
+  - Core/Object
+  - /MooTools.More
+
+provides: [Hash]
+
+...
+*/
+
+(function(){
+
+if (this.Hash) return;
+
+var Hash = this.Hash = new Type('Hash', function(object){
+	if (typeOf(object) == 'hash') object = Object.clone(object.getClean());
+	for (var key in object) this[key] = object[key];
+	return this;
+});
+
+this.$H = function(object){
+	return new Hash(object);
+};
+
+Hash.implement({
+
+	forEach: function(fn, bind){
+		Object.forEach(this, fn, bind);
+	},
+
+	getClean: function(){
+		var clean = {};
+		for (var key in this){
+			if (this.hasOwnProperty(key)) clean[key] = this[key];
+		}
+		return clean;
+	},
+
+	getLength: function(){
+		var length = 0;
+		for (var key in this){
+			if (this.hasOwnProperty(key)) length++;
+		}
+		return length;
+	}
+
+});
+
+Hash.alias('each', 'forEach');
+
+Hash.implement({
+
+	has: Object.prototype.hasOwnProperty,
+
+	keyOf: function(value){
+		return Object.keyOf(this, value);
+	},
+
+	hasValue: function(value){
+		return Object.contains(this, value);
+	},
+
+	extend: function(properties){
+		Hash.each(properties || {}, function(value, key){
+			Hash.set(this, key, value);
 		}, this);
 		return this;
 	},
 
-	check: function(type, instance, i){
-		this.checker[type][i] = true;
-		var every = this.instances.every(function(current, j){
-			return this.checker[type][j] || false;
+	combine: function(properties){
+		Hash.each(properties || {}, function(value, key){
+			Hash.include(this, key, value);
 		}, this);
-		if (!every) return;
-		this.checker[type] = {};
-		this.events[type].each(function(event){
-			event.call(this, this.instances, instance);
+		return this;
+	},
+
+	erase: function(key){
+		if (this.hasOwnProperty(key)) delete this[key];
+		return this;
+	},
+
+	get: function(key){
+		return (this.hasOwnProperty(key)) ? this[key] : null;
+	},
+
+	set: function(key, value){
+		if (!this[key] || this.hasOwnProperty(key)) this[key] = value;
+		return this;
+	},
+
+	empty: function(){
+		Hash.each(this, function(value, key){
+			delete this[key];
 		}, this);
+		return this;
+	},
+
+	include: function(key, value){
+		if (this[key] == undefined) this[key] = value;
+		return this;
+	},
+
+	map: function(fn, bind){
+		return new Hash(Object.map(this, fn, bind));
+	},
+
+	filter: function(fn, bind){
+		return new Hash(Object.filter(this, fn, bind));
+	},
+
+	every: function(fn, bind){
+		return Object.every(this, fn, bind);
+	},
+
+	some: function(fn, bind){
+		return Object.some(this, fn, bind);
+	},
+
+	getKeys: function(){
+		return Object.keys(this);
+	},
+
+	getValues: function(){
+		return Object.values(this);
+	},
+
+	toQueryString: function(base){
+		return Object.toQueryString(this, base);
 	}
 
 });
+
+Hash.alias({indexOf: 'keyOf', contains: 'hasValue'});
+
+
+})();
+
 
 
 /*
@@ -2041,6 +2175,7 @@ requires:
   - Core/Cookie
   - Core/JSON
   - /MooTools.More
+  - /Hash
 
 provides: [Hash.Cookie]
 
@@ -2083,6 +2218,7 @@ Hash.each(Hash.prototype, function(method, name){
 	});
 });
 
+
 /*
 ---
 
@@ -2102,6 +2238,7 @@ requires:
   - Core/Options
   - Core/Element.Event
   - Core/Element.Dimensions
+  - MooTools.More
 
 provides: [Scroller]
 
@@ -2125,7 +2262,7 @@ var Scroller = new Class({
 		this.setOptions(options);
 		this.element = document.id(element);
 		this.docBody = document.id(this.element.getDocument().body);
-		this.listener = ($type(this.element) != 'element') ?  this.docBody : this.element;
+		this.listener = (typeOf(this.element) != 'element') ? this.docBody : this.element;
 		this.timer = null;
 		this.bound = {
 			attach: this.attach.bind(this),
@@ -2136,18 +2273,20 @@ var Scroller = new Class({
 
 	start: function(){
 		this.listener.addEvents({
-			mouseenter: this.bound.attach,
+			mouseover: this.bound.attach,
 			mouseleave: this.bound.detach
 		});
+		return this;
 	},
 
 	stop: function(){
 		this.listener.removeEvents({
-			mouseenter: this.bound.attach,
+			mouseover: this.bound.attach,
 			mouseleave: this.bound.detach
 		});
 		this.detach();
-		this.timer = $clear(this.timer);
+		this.timer = clearInterval(this.timer);
+		return this;
 	},
 
 	attach: function(){
@@ -2156,7 +2295,7 @@ var Scroller = new Class({
 
 	detach: function(){
 		this.listener.removeEvent('mousemove', this.bound.getCoords);
-		this.timer = $clear(this.timer);
+		this.timer = clearInterval(this.timer);
 	},
 
 	getCoords: function(event){
@@ -2165,17 +2304,17 @@ var Scroller = new Class({
 	},
 
 	scroll: function(){
-		var size = this.element.getSize(), 
-			scroll = this.element.getScroll(), 
-			pos = this.element != this.docBody ? this.element.getOffsets() : {x: 0, y:0}, 
-			scrollSize = this.element.getScrollSize(), 
+		var size = this.element.getSize(),
+			scroll = this.element.getScroll(),
+			pos = this.element != this.docBody ? this.element.getOffsets() : {x: 0, y:0},
+			scrollSize = this.element.getScrollSize(),
 			change = {x: 0, y: 0},
 			top = this.options.area.top || this.options.area,
-		  bottom = this.options.area.bottom || this.options.area;
+			bottom = this.options.area.bottom || this.options.area;
 		for (var z in this.page){
-			if (this.page[z] < (top + pos[z]) && scroll[z] != 0) {
+			if (this.page[z] < (top + pos[z]) && scroll[z] != 0){
 				change[z] = (this.page[z] - top - pos[z]) * this.options.velocity;
-			} else if (this.page[z] + bottom > (size[z] + pos[z]) && scroll[z] + size[z] != scrollSize[z]) {
+			} else if (this.page[z] + bottom > (size[z] + pos[z]) && scroll[z] + size[z] != scrollSize[z]){
 				change[z] = (this.page[z] - size[z] + bottom - pos[z]) * this.options.velocity;
 			}
 			change[z] = change[z].round();
@@ -2200,6 +2339,7 @@ license: MIT-style license
 authors:
   - Valerio Proietti
   - Christoph Pojer
+  - Luis Merino
 
 requires:
   - Core/Options
@@ -2217,18 +2357,18 @@ provides: [Tips]
 (function(){
 
 var read = function(option, element){
-	return (option) ? ($type(option) == 'function' ? option(element) : element.get(option)) : '';
+	return (option) ? (typeOf(option) == 'function' ? option(element) : element.get(option)) : '';
 };
 
 this.Tips = new Class({
 
 	Implements: [Events, Options],
 
-	options: {
-		/*
-		onAttach: $empty(element),
-		onDetach: $empty(element),
-		*/
+	options: {/*
+		id: null,
+		onAttach: function(element){},
+		onDetach: function(element){},
+		onBound: function(coords){},*/
 		onShow: function(){
 			this.tip.setStyle('display', 'block');
 		},
@@ -2244,20 +2384,31 @@ this.Tips = new Class({
 		className: 'tip-wrap',
 		offset: {x: 16, y: 16},
 		windowPadding: {x:0, y:0},
-		fixed: false
+		fixed: false,
+		waiAria: true
 	},
 
 	initialize: function(){
-		var params = Array.link(arguments, {options: Object.type, elements: $defined});
+		var params = Array.link(arguments, {
+			options: Type.isObject,
+			elements: function(obj){
+				return obj != null;
+			}
+		});
 		this.setOptions(params.options);
 		if (params.elements) this.attach(params.elements);
 		this.container = new Element('div', {'class': 'tip'});
+
+		if (this.options.id){
+			this.container.set('id', this.options.id);
+			if (this.options.waiAria) this.attachWaiAria();
+		}
 	},
 
 	toElement: function(){
 		if (this.tip) return this.tip;
 
-		return this.tip = new Element('div', {
+		this.tip = new Element('div', {
 			'class': this.options.className,
 			styles: {
 				position: 'absolute',
@@ -2269,28 +2420,59 @@ this.Tips = new Class({
 			this.container,
 			new Element('div', {'class': 'tip-bottom'})
 		);
+
+		return this.tip;
+	},
+
+	attachWaiAria: function(){
+		var id = this.options.id;
+		this.container.set('role', 'tooltip');
+
+		if (!this.waiAria){
+			this.waiAria = {
+				show: function(element){
+					if (id) element.set('aria-describedby', id);
+					this.container.set('aria-hidden', 'false');
+				},
+				hide: function(element){
+					if (id) element.erase('aria-describedby');
+					this.container.set('aria-hidden', 'true');
+				}
+			};
+		}
+		this.addEvents(this.waiAria);
+	},
+
+	detachWaiAria: function(){
+		if (this.waiAria){
+			this.container.erase('role');
+			this.container.erase('aria-hidden');
+			this.removeEvents(this.waiAria);
+		}
 	},
 
 	attach: function(elements){
 		$$(elements).each(function(element){
 			var title = read(this.options.title, element),
 				text = read(this.options.text, element);
-			
-			element.erase('title').store('tip:native', title).retrieve('tip:title', title);
+
+			element.set('title', '').store('tip:native', title).retrieve('tip:title', title);
 			element.retrieve('tip:text', text);
 			this.fireEvent('attach', [element]);
-			
+
 			var events = ['enter', 'leave'];
 			if (!this.options.fixed) events.push('move');
-			
+
 			events.each(function(value){
 				var event = element.retrieve('tip:' + value);
-				if (!event) event = this['element' + value.capitalize()].bindWithEvent(this, element);
-				
+				if (!event) event = function(event){
+					this['element' + value.capitalize()].apply(this, [event, element]);
+				}.bind(this);
+
 				element.store('tip:' + value, event).addEvent('mouse' + value, event);
 			}, this);
 		}, this);
-		
+
 		return this;
 	},
 
@@ -2299,37 +2481,55 @@ this.Tips = new Class({
 			['enter', 'leave', 'move'].each(function(value){
 				element.removeEvent('mouse' + value, element.retrieve('tip:' + value)).eliminate('tip:' + value);
 			});
-			
+
 			this.fireEvent('detach', [element]);
-			
+
 			if (this.options.title == 'title'){ // This is necessary to check if we can revert the title
 				var original = element.retrieve('tip:native');
 				if (original) element.set('title', original);
 			}
 		}, this);
-		
+
 		return this;
 	},
 
 	elementEnter: function(event, element){
-		this.container.empty();
-		
-		['title', 'text'].each(function(value){
-			var content = element.retrieve('tip:' + value);
-			if (content) this.fill(new Element('div', {'class': 'tip-' + value}).inject(this.container), content);
-		}, this);
-		
-		$clear(this.timer);
+		clearTimeout(this.timer);
 		this.timer = (function(){
+			this.container.empty();
+
+			['title', 'text'].each(function(value){
+				var content = element.retrieve('tip:' + value);
+				var div = this['_' + value + 'Element'] = new Element('div', {
+						'class': 'tip-' + value
+					}).inject(this.container);
+				if (content) this.fill(div, content);
+			}, this);
 			this.show(element);
 			this.position((this.options.fixed) ? {page: element.getPosition()} : event);
 		}).delay(this.options.showDelay, this);
 	},
 
 	elementLeave: function(event, element){
-		$clear(this.timer);
+		clearTimeout(this.timer);
 		this.timer = this.hide.delay(this.options.hideDelay, this, element);
 		this.fireForParent(event, element);
+	},
+
+	setTitle: function(title){
+		if (this._titleElement){
+			this._titleElement.empty();
+			this.fill(this._titleElement, title);
+		}
+		return this;
+	},
+
+	setText: function(text){
+		if (this._textElement){
+			this._textElement.empty();
+			this.fill(this._textElement, text);
+		}
+		return this;
 	},
 
 	fireForParent: function(event, element){
@@ -2349,18 +2549,24 @@ this.Tips = new Class({
 		var size = window.getSize(), scroll = window.getScroll(),
 			tip = {x: this.tip.offsetWidth, y: this.tip.offsetHeight},
 			props = {x: 'left', y: 'top'},
+			bounds = {y: false, x2: false, y2: false, x: false},
 			obj = {};
-		
+
 		for (var z in props){
 			obj[props[z]] = event.page[z] + this.options.offset[z];
-			if ((obj[props[z]] + tip[z] - scroll[z]) > size[z] - this.options.windowPadding[z]) obj[props[z]] = event.page[z] - this.options.offset[z] - tip[z];
+			if (obj[props[z]] < 0) bounds[z] = true;
+			if ((obj[props[z]] + tip[z] - scroll[z]) > size[z] - this.options.windowPadding[z]){
+				obj[props[z]] = event.page[z] - this.options.offset[z] - tip[z];
+				bounds[z+'2'] = true;
+			}
 		}
-		
+
+		this.fireEvent('bound', bounds);
 		this.tip.setStyles(obj);
 	},
 
 	fill: function(element, contents){
-		if(typeof contents == 'string') element.set('html', contents);
+		if (typeof contents == 'string') element.set('html', contents);
 		else element.adopt(contents);
 	},
 
@@ -2378,3 +2584,4 @@ this.Tips = new Class({
 });
 
 })();
+
