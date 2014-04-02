@@ -27,6 +27,7 @@ qwebirc.irc.IRCConnection = new Class({
   },
   send: function(data, synchronous) {
     FlashSocket.write(String(data)+"\r\n");
+    return true;
   },
   recv: function recv(data) {
     this.buffer += data;
