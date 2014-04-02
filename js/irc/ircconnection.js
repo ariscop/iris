@@ -2,6 +2,9 @@
 qwebirc.irc.IRCConnection = new Class({
   Implements: [Events, Options],
   options: {
+    host: "irc.example.com",
+    port: 6667,
+    xmlport: 8430,
     timeout: 45000,
     maxRetries: 5,
   },
