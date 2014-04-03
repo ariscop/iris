@@ -30,8 +30,8 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.channels = {}
     this.nextctcp = 0;
 
-    connOptions.initialNickname = this.nickname;
-    connOptions.onRecv = this.dispatch.bind(this);
+    connOptions.onRecv = this.recv.bind(this);
+    connOptions.onState = this.state.bind(this);
     this.connection = new qwebirc.irc.IRCConnection(session, connOptions);
 
     this.send = this.connection.send.bind(this.connection);
@@ -40,38 +40,27 @@ qwebirc.irc.BaseIRCClient = new Class({
 
     this.setupGenericErrors();
   },
-  dispatch: function(data) {
-    var message = data[0];
-    if(message == "connect") {
+  state: function(state, msg) {
+    if(state == "connect")
       this.connected();
-    } else if(message == "disconnect") {
-      if(data.length == 0) {
-        this.disconnected("No error!");
-      } else {
-        this.disconnected(data[1]);
-      }
+    else if(state == "disconnect") {
+      msg = msg || "No error!";
+      this.disconnected(msg);
       this.disconnect();
-    } else if(message == "c") {
-      var command = data[1].toUpperCase();
-
-      var prefix = data[2];
-      var sl = data[3];
+    }
+  },
+  recv: function(command, prefix, args) {
+      command = command.toUpperCase()
       var n = qwebirc.irc.Numerics[command];
-
-      var x = n;
       if(!n)
         n = command;
 
       var o = this["irc_" + n];
 
-      if(o) {
-        var r = o.run([prefix, sl], this);
-        if(!r)
-          this.rawNumeric(command, prefix, sl);
-      } else {
-        this.rawNumeric(command, prefix, sl);
-      }
-    }
+      if(o && o.run([prefix, args], this))
+        return
+
+      this.rawNumeric(command, prefix, args);
   },
   isChannel: function(target) {
     var c = target.charAt(0);

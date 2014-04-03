@@ -17,20 +17,20 @@ qwebirc.irc.IRCConnection = new Class({
   connect: function() {
     this.buffer = "";
     if(!FlashSocket.connect) {
-      this.fireEvent("recv", [["disconnect", "Error: This client requires flash"]]);
+      this.fireEvent("state", ["disconnect", "Error: This client requires flash"]);
       return;
     }
     FlashSocket.connect("irc.ipv4.ponychat.net", 6667, 8430);
   },
   connected: function() {
-    this.fireEvent("recv", [["connect"]]);
+    this.fireEvent("state", ["connect"]);
   },
   disconnect: function() {
     FlashSocket.disconnect();
   },
   disconnected: function(reason) {
     reason = reason || "Connection Closed";
-    this.fireEvent("recv", [["disconnect", reason]]);
+    this.fireEvent("state", ["disconnect", reason]);
   },
   send: function(data, synchronous) {
     FlashSocket.write(String(data)+"\r\n");
@@ -42,7 +42,7 @@ qwebirc.irc.IRCConnection = new Class({
     while (m.length > 1) {
       var msg = m.shift();
       msg = this.__parse(msg);
-      this.fireEvent("recv", [msg]);
+      this.fireEvent("recv", msg);
     }
     this.buffer = m[0];
   },
@@ -67,7 +67,7 @@ qwebirc.irc.IRCConnection = new Class({
     }
 
     command = args.splice(0, 1)[0];
-    return ["c", command, prefix, args];
+    return [command, prefix, args];
   },
   __state: function(state, msg) {
     if(state == 1 /* OPEN */)
