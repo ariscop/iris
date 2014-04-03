@@ -3,5 +3,12 @@ TODO, in no particular order
 
 General:
 
+client:
+- CAP Negotiation
+- Authentication
+
+conf:
+- split frontend section
+
 UI:
 - replace qwebirc UI elements (logo, pages, etc)
