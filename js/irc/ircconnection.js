@@ -20,7 +20,7 @@ qwebirc.irc.IRCConnection = new Class({
       this.fireEvent("state", ["disconnect", "Error: This client requires flash"]);
       return;
     }
-    FlashSocket.connect("irc.ipv4.ponychat.net", 6667, 8430);
+    FlashSocket.connect(this.options.host, this.options.port, this.options.xmlport);
   },
   connected: function() {
     this.fireEvent("state", ["connect"]);
