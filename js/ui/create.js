@@ -7,18 +7,19 @@ qwebirc.ui.create = function(element, uiclass) {
   /* Now wait until all the JS is loaded. */
   window.addEvent("domready", function() {
 
-    /* Define login function. */
-    var callback = function(connOptions) {
-      session.irc = new qwebirc.irc.IRCClient(session);
-      session.irc.connect(connOptions);
-      window.onbeforeunload = qwebirc.ui.onbeforeunload;
-      window.addEvent("unload", function() {
-        session.irc.quit("Web client closed");
-      });
-    };
-
     /* Create UI. */
     ui = new uiclass(this.session, $(element));
+
+    session.irc = new qwebirc.irc.IRCClient(session);
+    window.onbeforeunload = qwebirc.ui.onbeforeunload;
+    window.addEvent("unload", function() {
+      session.irc.quit("Web client closed");
+    });
+
+    /* Define login function. */
+    var callback = function(connOptions) {
+      session.irc.connect(connOptions);
+    };
 
     /* Create login window. */
     ui.connectWindow(callback);
