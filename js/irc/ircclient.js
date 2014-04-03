@@ -1,12 +1,12 @@
 qwebirc.irc.IRCClient = new Class({
   Extends: qwebirc.irc.BaseIRCClient,
   session: null,
-  initialize: function(session, connOptions) {
-    this.parent(session, connOptions);
+  initialize: function(session) {
+    this.parent(session);
 
     this.prefixes = "@+";
     this.modeprefixes = "ov";
-    this.autojoin = connOptions.autojoin;
+    this.autojoin = "";
 
     this.commandparser = new qwebirc.irc.Commands(session);
     this.exec = this.commandparser.dispatch.bind(this.commandparser);
@@ -19,6 +19,12 @@ qwebirc.irc.IRCClient = new Class({
     this.activeTimers = {};
 
     this.tracker = new qwebirc.irc.IRCTracker(this);
+  },
+  connect: function(connOptions) {
+    if(connOptions.autojoin)
+      this.autojoin = connOptions.autojoin;
+
+    this.parent(connOptions);
   },
   newLine: function(window, type, data) {
     if(!data)
