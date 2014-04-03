@@ -140,7 +140,7 @@ qwebirc.ui.Colourise = function(session, line, entity) {
 
 String.prototype.toHSBColour = function(session) {
   var lower = session.irc.toIRCLower(session.irc.stripPrefix(this));
-  if(lower == session.irc.lowerNickname)
+  if(lower == session.irc.toIRCLower(session.irc.nickname))
     return null;
 
   var hash = 0;

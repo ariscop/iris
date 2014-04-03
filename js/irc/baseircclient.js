@@ -22,7 +22,6 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
 
     this.nickname = connOptions.nickname;
-    this.lowerNickname = this.toIRCLower(this.nickname);
 
     this.__signedOn = false;
     this.caps = {};
@@ -75,7 +74,6 @@ qwebirc.irc.BaseIRCClient = new Class({
       } else {
         /* TODO: warn */
       }
-      this.lowerNickname = this.toIRCLower(this.nickname);
     } else if(key == "CHANMODES") {
       var smodes = value.split(",");
       for(var i=0;i<smodes.length;i++)
@@ -114,7 +112,6 @@ qwebirc.irc.BaseIRCClient = new Class({
   },
   irc_RPL_WELCOME: function(prefix, params) {
     this.nickname = params[0];
-    this.lowerNickname = this.toIRCLower(this.nickname);
     this.__signedOn = true;
     this.signedOn(this.nickname);
   },
@@ -123,10 +120,8 @@ qwebirc.irc.BaseIRCClient = new Class({
     var oldnick = user.hostToNick();
     var newnick = params[0];
 
-    if(this.nickname == oldnick) {
+    if(this.nickname == oldnick)
       this.nickname = newnick;
-      this.lowerNickname = this.toIRCLower(this.nickname);
-    }
 
     this.nickChanged(user, newnick);
 
