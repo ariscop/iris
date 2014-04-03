@@ -64,10 +64,6 @@ qwebirc.ui.Panes.Connect.pclass = new Class({
       data["authSecret"] = this.session.atheme.secret;
     }
 
-    data["host"] = conf.frontend.host;
-    data["port"] = conf.frontend.port;
-    data["xmlport"] = conf.frontend.xmlport;
-
     this.connectCallback(data);
   },
 

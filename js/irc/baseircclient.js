@@ -29,7 +29,10 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.channels = {}
     this.nextctcp = 0;
 
-    connOptions.onRecv = this.recv.bind(this);
+    connOptions.host    = conf.frontend.host;
+    connOptions.port    = conf.frontend.port;
+    connOptions.xmlport = conf.frontend.xmlport;
+    connOptions.onRecv  = this.recv.bind(this);
     connOptions.onState = this.state.bind(this);
     this.connection = new qwebirc.irc.IRCConnection(session, connOptions);
 
