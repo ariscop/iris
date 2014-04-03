@@ -51,45 +51,8 @@
   <script type="text/javascript" src="js/ui/panes/options.js"></script>
   <script type="text/javascript" src="js/ui/panes/privacypolicy.js"></script>
   <script type="text/javascript" src="js/ui/frontends/qui.js"></script>
-
+  <script type="text/javascript" src="config.js"></script>
   <script type="text/javascript">
-    conf = qwebirc.config.load({
-        "ui": {
-            "fg_color": "DDDDDD",
-            "fg_sec_color": "999999",
-            "privacy": false,
-            "nick_status": false,
-            "flash_on_mention": false,
-            "dedicated_msg_window": false,
-            "bg_color": "111111",
-            "dedicated_notice_window": false,
-            "lastpos_line": true,
-            "hide_joinparts": false,
-            "simple_color": false,
-            "beep_on_mention": false,
-            "nick_click_query": false,
-            "nick_colors": false
-        },
-        "atheme": {
-            "sasl_type": "AUTHCOOKIE",
-            "nickserv_login": true,
-            "chan_list_on_start": false,
-            "chan_list": false,
-            "chan_list_cloud_view": false
-        },
-        "frontend": {
-            "chan_prompt": true,
-            "initial_chans": "",
-            "prompt": true,
-            "chan_autoconnect": true,
-            "base_url": "",
-            "dynamic_base_url": "",
-            "app_title": "FooNet Web IRC",
-            "initial_nick": "",
-            "static_base_url": "",
-            "network_name": "FooNet"
-        }
-    });
     qwebirc.ui.create("ircui", qwebirc.ui.QUI);
   </script>
 </head>

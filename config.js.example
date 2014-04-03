@@ -1,0 +1,37 @@
+conf = qwebirc.config.load({
+    "ui": {
+        "fg_color": "DDDDDD",
+        "fg_sec_color": "999999",
+        "privacy": false,
+        "nick_status": false,
+        "flash_on_mention": false,
+        "dedicated_msg_window": false,
+        "bg_color": "111111",
+        "dedicated_notice_window": false,
+        "lastpos_line": true,
+        "hide_joinparts": false,
+        "simple_color": false,
+        "beep_on_mention": false,
+        "nick_click_query": false,
+        "nick_colors": true
+    },
+    "atheme": {
+        "sasl_type": "AUTHCOOKIE",
+        "nickserv_login": true,
+        "chan_list_on_start": true,
+        "chan_list": true,
+        "chan_list_cloud_view": false
+    },
+    "frontend": {
+        "chan_prompt": true,
+        "initial_chans": "#FooNet",
+        "prompt": true,
+        "chan_autoconnect": true,
+        "base_url": "",
+        "dynamic_base_url": "",
+        "app_title": "FooNet Web IRC",
+        "initial_nick": "user_.....",
+        "static_base_url": "",
+        "network_name": "FooNet",
+    }
+});
