@@ -24,7 +24,7 @@ qwebirc.irc.IRCClient = new Class({
 
     this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
 
-    this.nickname = conf.frontend.initial_nickname;
+    this.nickname = conf.frontend.initial_nick;
 
     this.signedOn = false;
     this.caps = {};

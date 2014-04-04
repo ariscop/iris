@@ -17,9 +17,24 @@ qwebirc.ui.create = function(element, uiclass) {
     });
 
     /* Define login function. */
-    var callback = function(connOptions) {
-      session.irc.connect(connOptions);
-    };
+    /* TODO: This is ugly, replace it. needs a level triggered event */
+    if(!conf.frontend.autoconnect) {
+      var callback = function(connOptions) {
+        session.irc.connect(connOptions);
+      };
+    } else {
+      session.irc.connect({});
+      var callback = function(connOptions) {
+        if(session.irc.signedOn) {
+          session.irc.send("NICK "+connOptions.nickname);
+          session.irc.send("JOIN "+connOptions.autojoin);
+        } else {
+          session.irc.addEvent("signedOn:once", function() {
+            callback(connOptions);
+          });
+        };
+      };
+    }
 
     /* Create login window. */
     ui.connectWindow(callback);
