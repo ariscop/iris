@@ -35,11 +35,7 @@ qwebirc.irc.IRCClient = new Class({
     this.channels = {}
     this.nextctcp = 0;
 
-    var connOptions = {};
-    connOptions.host    = conf.frontend.host;
-    connOptions.port    = conf.frontend.port;
-    connOptions.xmlport = conf.frontend.xmlport;
-    this.connection = new qwebirc.irc.IRCConnection(session, connOptions, this);
+    this.connection = new qwebirc.irc.IRCConnection(session, conf.connection, this);
 
     this.setupGenericErrors();
 
