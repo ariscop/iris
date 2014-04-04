@@ -144,10 +144,7 @@ qwebirc.irc.IRCClient = new Class({
       w.updateNickList(sortednames);
   },
   newWindow: function(name, type, select) {
-    var w = ui.getWindow(type, name);
-    if(!w) {
-      w = ui.newWindow(type, name);
-    }
+    var w = ui.newWindow(type, name);
 
     if(select)
       ui.selectWindow(w);
@@ -166,16 +163,14 @@ qwebirc.irc.IRCClient = new Class({
   },
   newPrivmsgQueryWindow: function(name) {
     if(conf.ui.dedicated_msg_window) {
-      if(!ui.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages"))
-        return ui.newWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages");
+      return ui.newWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages");
     } else {
       return this.newWindow(name, qwebirc.ui.WINDOW_QUERY, false);
     }
   },
   newNoticeQueryWindow: function(name) {
     if(conf.ui.dedicated_notice_window)
-      if(!ui.getWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages"))
-        return ui.newWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages");
+      return ui.newWindow(qwebirc.ui.WINDOW_MESSAGES, "Messages");
   },
   newQueryLine: function(window, type, data, privmsg, active) {
     if(ui.getWindow(qwebirc.ui.WINDOW_QUERY, window))
