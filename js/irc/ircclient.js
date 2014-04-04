@@ -15,6 +15,9 @@ qwebirc.irc.RegisteredCTCPs = {
 };
 
 qwebirc.irc.IRCClient = new Class({
+  Implements: [Events, Options],
+  options: {
+  },
   session: null,
   initialize: function(session) {
     this.session = session;
@@ -23,7 +26,7 @@ qwebirc.irc.IRCClient = new Class({
 
     this.nickname = conf.frontend.initial_nickname;
 
-    this.__signedOn = false;
+    this.signedOn = false;
     this.caps = {};
     this.pmodes = {
         b: qwebirc.irc.PMODE_LIST,
@@ -230,15 +233,6 @@ qwebirc.irc.IRCClient = new Class({
   /* from here down are events */
   rawNumeric: function(numeric, prefix, params) {
     this.newServerLine("RAW", {"n": "numeric", "m": params.slice(1).join(" ")});
-  },
-  signedOn: function(nickname) {
-    this.tracker = new qwebirc.irc.IRCTracker(this);
-    this.nickname = nickname;
-    this.newServerLine("SIGNON");
-
-    if(this.autojoin) {
-      this.exec("/AUTOJOIN");
-    }
   },
   userJoined: function(user, channel) {
     var nick = user.hostToNick();
@@ -741,8 +735,14 @@ qwebirc.irc.IRCClient = new Class({
   },
   irc_RPL_WELCOME: function(prefix, params) {
     this.nickname = params[0];
-    this.__signedOn = true;
-    this.signedOn(this.nickname);
+    this.signedOn = true;
+    this.tracker = new qwebirc.irc.IRCTracker(this);
+    this.newServerLine("SIGNON");
+
+    if(this.autojoin) {
+      this.exec("/AUTOJOIN");
+    }
+    this.fireEvent("signedOn");
   },
   irc_NICK: function(prefix, params) {
     var user = prefix;
@@ -881,7 +881,7 @@ qwebirc.irc.IRCClient = new Class({
         this.userNotice(user, message);
       else
         this.serverNotice(user, message);
-    } else if (target != this.nickname && this.__signedOn) {
+    } else if (target != this.nickname && this.signedOn) {
       this.channelNotice(user, target, message);
     } else if((user == "") || (user.indexOf("!") == -1)) {
       this.serverNotice(user, message);
@@ -1109,11 +1109,11 @@ qwebirc.irc.IRCClient = new Class({
   irc_genericNickInUse: function(prefix, params) {
     this.genericError(params[1], params.indexFromEnd(-1).replace("in use.", "in use"));
 
-    if(this.__signedOn)
+    if(this.signedOn)
       return true;
 
     /* this also handles ERR_UNAVAILRESOURCE, which can be sent for both nicks and
-     * channels, but since this.__signedOn is false, we can safely assume it means
+     * channels, but since this.signedOn is false, we can safely assume it means
      * a nick. */
     var newnick = params[1] + "_";
     if(newnick == this.lastnick)
