@@ -39,9 +39,7 @@ qwebirc.irc.IRCClient = new Class({
     connOptions.host    = conf.frontend.host;
     connOptions.port    = conf.frontend.port;
     connOptions.xmlport = conf.frontend.xmlport;
-    connOptions.onRecv  = this.recv.bind(this);
-    connOptions.onState = this.state.bind(this);
-    this.connection = new qwebirc.irc.IRCConnection(session, connOptions);
+    this.connection = new qwebirc.irc.IRCConnection(session, connOptions, this);
 
     this.setupGenericErrors();
 
@@ -67,6 +65,7 @@ qwebirc.irc.IRCClient = new Class({
     if(connOptions.nickname)
       this.nickname = connOptions.nickname;
     this.connection.connect();
+    this.newServerLine("CONNECTING");
   },
   send: function(data) {
     return this.connection.send(data);
@@ -661,27 +660,38 @@ qwebirc.irc.IRCClient = new Class({
   channelCreationTime: function(channel, time) {
     this.newTargetOrActiveLine(channel, "CHANNELCREATIONTIME", {c: channel, m: qwebirc.irc.IRCDate(new Date(time * 1000))});
   },
-  state: function(state, msg) {
-    if(state == "connect")
-      this.connected();
-    else if(state == "disconnect") {
-      msg = msg || "No error!";
-      this.disconnected(msg);
-      this.disconnect();
+  recv: function(s) {
+    var command = '';
+    var prefix = '';
+    var args = [];
+    var trailing = [];
+
+    if (s[0] == ':') {
+        var index = s.indexOf(' ');
+        prefix = s.substring(1, index);
+        s = s.substring(index + 1);
     }
-  },
-  recv: function(command, prefix, args) {
-      command = command.toUpperCase()
-      var n = qwebirc.irc.Numerics[command];
-      if(!n)
-        n = command;
+    if (s.indexOf(' :') != -1) {
+        var index = s.indexOf(' :');
+        trailing = s.substring(index + 2);
+        args = s.substring(0, index).split(' ');
+        args.push(trailing);
+    } else {
+        args = s.split(' ');
+    }
 
-      var o = this["irc_" + n];
+    command = args.splice(0, 1)[0].toUpperCase();
 
-      if(o && o.run([prefix, args], this))
-        return
+    var n = qwebirc.irc.Numerics[command];
+    if(!n)
+      n = command;
 
-      this.rawNumeric(command, prefix, args);
+    var o = this["irc_" + n];
+
+    if(o && o.run([prefix, args], this))
+      return
+
+    this.rawNumeric(command, prefix, args);
   },
   isChannel: function(target) {
     var c = target.charAt(0);

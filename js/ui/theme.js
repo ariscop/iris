@@ -13,6 +13,7 @@ qwebirc.ui.themes.ThemeControlCodeMap = {
 qwebirc.ui.themes.Default = {
   "PREFIX": ["$C4==$O "],
   "SIGNON": ["Signed on!", true],
+  "CONNECTING": ["Connecting...", true],
   "CONNECT": ["Connected to server.", true],
   "RAW": ["$m", true],
   "DISCONNECT": ["Disconnected from server: $m", true],
