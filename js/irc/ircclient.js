@@ -546,6 +546,7 @@ qwebirc.irc.IRCClient = new Class({
   connected: function() {
     qwebirc.connected = true;
     this.newServerLine("CONNECT");
+    this.send("CAP LS");
     this.send("NICK "+this.nickname);
     this.send("USER iris 0 * : Webchat");
   },
@@ -725,19 +726,24 @@ qwebirc.irc.IRCClient = new Class({
     return true;
   },
   irc_CAP: function(prefix, params) {
-    if(params[1] == "ACK") {
+    switch(params[1]) {
+    case "ACK":
       var capslist = [];
       if (params[2] == "*")
         capslist = params[3].split(" ");
       else
         capslist = params[2].split(" ");
 
-      var i;
-      for (i = 0; i < capslist.length; i++) {
+      for (var i = 0; i < capslist.length; i++) {
         this.caps[capslist[i]] = true;
         if (capslist[i] == "sasl")
           this.rawNumeric("AUTHENTICATE", prefix, ["*", "Attempting SASL authentication..."]);
       }
+      break;
+    case "LS":
+      if (params[0] == "*")
+        this.send("CAP END");
+      break;
     }
 
     return true;
