@@ -32,6 +32,11 @@ conf = qwebirc.config.load({
         "app_title": "FooNet Web IRC",
         "initial_nick": "user_.....",
         "static_base_url": "",
-        "network_name": "FooNet",
+        "network_name": "FooNet"
+    },
+    "connection": {
+        "host": "irc.example.com",
+        "port": 6667,
+        "xmlport": 8430
     }
 });

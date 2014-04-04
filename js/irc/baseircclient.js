@@ -30,9 +30,7 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.channels = {}
     this.nextctcp = 0;
 
-    connOptions.initialNickname = this.nickname;
-    connOptions.onRecv = this.dispatch.bind(this);
-    this.connection = new qwebirc.irc.IRCConnection(session, connOptions);
+    this.connection = new qwebirc.irc.IRCConnection(session, conf.connection, this);
 
     this.send = this.connection.send.bind(this.connection);
     this.connect = this.connection.connect.bind(this.connection);

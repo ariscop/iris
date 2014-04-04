@@ -19,6 +19,7 @@
   <script type="text/javascript" src="js/session.js"></script>
   <script type="text/javascript" src="js/sound.js"></script>
   <script type="text/javascript" src="js/version.js"></script>
+  <script type="text/javascript" src="js/swfobject.js"></script>
   <script type="text/javascript" src="js/irc/athemequery.js"></script>
   <script type="text/javascript" src="js/irc/baseircclient.js"></script>
   <script type="text/javascript" src="js/irc/commandhistory.js"></script>
@@ -61,6 +62,17 @@
     <noscript>
       <div id="noscript">Javascript is required to use IRC.</div>
     </noscript>
+  </div>
+  <div style=”width:0px;height:0px;overflow:hidden;”>
+      <div id="FlashSocket"></div>
+      <script type="text/javascript">
+        FlashSocket = swfobject.createSWF({
+            data: "swf/flashsocket.swf",
+            width: "10",
+            height: "10",
+            allowscriptaccess: "always"
+        }, {}, "FlashSocket");
+      </script>
   </div>
 </body>
 </html>
