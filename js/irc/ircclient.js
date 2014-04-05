@@ -806,37 +806,37 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  processCTCP: function(message) {
+  processCTCP: function(line) {
+    var message = line.params.indexFromEnd(-1);
+    if(line.ctcp)
+      return line.ctcp;
     if(message.charAt(0) != "\x01")
-      return;
+      return false;
 
     if(message.charAt(message.length - 1) == "\x01") {
       message = message.substr(1, message.length - 2);
     } else {
       message = message.substr(1);
     }
-    return message.splitMax(" ", 2);
+    var params = message.splitMax(" ", 2);
+
+    return line.ctcp = {type: params[0].toUpperCase(), params: params[1]};
   },
   irc_PRIVMSG: function(line, prefix, params) {
     var user = prefix;
     var target = params[0];
     var message = params.indexFromEnd(-1);
 
-    var ctcp = this.processCTCP(message);
-    if(ctcp) {
-      var type = ctcp[0].toUpperCase();
-
-      var replyfn = qwebirc.irc.RegisteredCTCPs[type];
-      if(replyfn) {
-        var reply = replyfn(ctcp[1]);
-        if(reply)
-          this.send("NOTICE " + user.hostToNick() + " :\x01" + type + " " + reply + "\x01");
-      }
+    var ctcp, replyfn, reply;
+    if(ctcp = this.processCTCP(line)) {
+      if(replyfn = qwebirc.irc.RegisteredCTCPs[ctcp.type])
+        if(reply = replyfn(ctcp.params))
+          this.send("NOTICE " + user.hostToNick() + " :\x01" + ctcp.type + " " + reply + "\x01");
 
       if(target == this.nickname) {
-        this.userCTCP(user, type, ctcp[1]);
+        this.userCTCP(user, ctcp.type, ctcp.params);
       } else {
-        this.channelCTCP(user, target, type, ctcp[1]);
+        this.channelCTCP(user, target, ctcp.type, ctcp.params);
       }
     } else {
       if(target == this.nickname) {
@@ -864,9 +864,8 @@ qwebirc.irc.IRCClient = new Class({
     } else if((user == "") || (user.indexOf("!") == -1)) {
       this.serverNotice(user, message);
     } else {
-      var ctcp = this.processCTCP(message);
-      if(ctcp) {
-        this.userCTCPReply(user, ctcp[0], ctcp[1]);
+      if(this.processCTCP(line)) {
+        this.userCTCPReply(user, line.ctcp.type, line.ctcp.params);
       } else {
         this.userNotice(user, message);
       }
