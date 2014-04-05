@@ -36,7 +36,6 @@ qwebirc.irc.IRCClient = new Class({
         v: qwebirc.irc.PMODE_SET_UNSET
     };
     this.channels = {}
-    this.nextctcp = 0;
 
     this.connection = new qwebirc.irc.IRCConnection(session, conf.connection, this);
 
@@ -849,10 +848,9 @@ qwebirc.irc.IRCClient = new Class({
 
       var replyfn = qwebirc.irc.RegisteredCTCPs[type];
       if(replyfn) {
-        var t = new Date().getTime() / 1000;
-        if(t > this.nextctcp)
-          this.send("NOTICE " + user.hostToNick() + " :\x01" + type + " " + replyfn(ctcp[1]) + "\x01");
-        this.nextctcp = t + 5;
+        var reply = replyfn(ctcp[1]);
+        if(reply)
+          this.send("NOTICE " + user.hostToNick() + " :\x01" + type + " " + reply + "\x01");
       }
 
       if(target == this.nickname) {
