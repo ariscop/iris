@@ -646,6 +646,7 @@ qwebirc.irc.IRCClient = new Class({
     this.newTargetOrActiveLine(channel, "CHANNELCREATIONTIME", {c: channel, m: qwebirc.irc.IRCDate(new Date(time * 1000))});
   },
   recv: function(s) {
+    try {
     var line = new qwebirc.irc.IRCMessage(s);
     var n = qwebirc.irc.Numerics[line.command];
     if(!n)
@@ -657,6 +658,7 @@ qwebirc.irc.IRCClient = new Class({
       return
 
     this.rawNumeric(line, line.command, line.prefix, line.params);
+    } catch(e) { console.log(e) }
   },
   isChannel: function(target) {
     var c = target.charAt(0);
@@ -806,29 +808,13 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  processCTCP: function(line) {
-    var message = line.params.indexFromEnd(-1);
-    if(line.ctcp)
-      return line.ctcp;
-    if(message.charAt(0) != "\x01")
-      return false;
-
-    if(message.charAt(message.length - 1) == "\x01") {
-      message = message.substr(1, message.length - 2);
-    } else {
-      message = message.substr(1);
-    }
-    var params = message.splitMax(" ", 2);
-
-    return line.ctcp = {type: params[0].toUpperCase(), params: params[1]};
-  },
   irc_PRIVMSG: function(line, prefix, params) {
     var user = prefix;
     var target = params[0];
     var message = params.indexFromEnd(-1);
 
-    var ctcp, replyfn, reply;
-    if(ctcp = this.processCTCP(line)) {
+    var ctcp = line.ctcp, replyfn, reply;
+    if(ctcp) {
       if(replyfn = qwebirc.irc.RegisteredCTCPs[ctcp.type])
         if(reply = replyfn(ctcp.params))
           this.send("NOTICE " + user.hostToNick() + " :\x01" + ctcp.type + " " + reply + "\x01");
@@ -864,7 +850,7 @@ qwebirc.irc.IRCClient = new Class({
     } else if((user == "") || (user.indexOf("!") == -1)) {
       this.serverNotice(user, message);
     } else {
-      if(this.processCTCP(line)) {
+      if(line.ctcp) {
         this.userCTCPReply(user, line.ctcp.type, line.ctcp.params);
       } else {
         this.userNotice(user, message);
@@ -1148,29 +1134,50 @@ qwebirc.irc.IRCClient = new Class({
 });
 
 qwebirc.irc.IRCMessage = new Class({
-  initialize: function(raw) {
-    this.raw = String(raw);
+  __parse: function() {
     this.command = '';
     this.prefix = '';
     this.params = [];
-    this.params = [];
-    var trailing = '';
+    this.trailing;
 
-    if (raw[0] == ':') {
-        var index = raw.indexOf(' ');
-        this.prefix = raw.substring(1, index);
-        raw = raw.substring(index + 1);
+    if (this.raw[0] == ':') {
+      var  index  = this.raw.indexOf(' ');
+      this.prefix = this.raw.substring(1, index);
+      this.raw    = this.raw.substring(index + 1);
     }
-    if (raw.indexOf(' :') != -1) {
-        var index = raw.indexOf(' :');
-        trailing = raw.substring(index + 2);
-        this.params = raw.substring(0, index).split(' ');
-        this.params.push(trailing);
+    if (this.raw.indexOf(' :') != -1) {
+      var  index    = this.raw.indexOf(' :');
+      this.trailing = this.raw.substring(index + 2);
+      this.params   = this.raw.substring(0, index).split(' ');
+      this.params.push(this.trailing);
     } else {
-        this.params = raw.split(' ');
+      this.params = this.raw.split(' ');
     }
 
     this.command = this.params.splice(0, 1)[0].toUpperCase();
+  },
+  __parse_ctcp: function(message) {
+    if(!(this.trailing &&
+         this.trailing.charAt(0) != "\x01"))
+      return;
+
+    this.ctcp = {};
+
+    if(this.trailing.charAt(this.trailing.length - 1) == "\x01")
+      this.trailing = this.trailing.substr(1, this.trailing.length - 2);
+    else
+      this.trailing = this.trailing.substr(1);
+
+    var params = this.trailing.splitMax(" ", 2);
+    this.ctcp.type   = params[0].toUpperCase();
+    this.ctcp.params = params[1];
+  },
+  initialize: function(raw) {
+    this.raw = String(raw);
+    this.__parse();
+    if(this.command == "PRIVMSG" ||
+       this.command == "NOTICE")
+      this.__parse_ctcp();
   },
   toString: function() {
     return this.raw;
