@@ -230,7 +230,7 @@ qwebirc.irc.IRCClient = new Class({
   },
 
   /* from here down are events */
-  rawNumeric: function(numeric, prefix, params) {
+  rawNumeric: function(line, command, prefix, params) {
     this.newServerLine("RAW", {"n": "numeric", "m": params.slice(1).join(" ")});
   },
   userJoined: function(user, channel) {
@@ -653,10 +653,10 @@ qwebirc.irc.IRCClient = new Class({
 
     var o = this["irc_" + n];
 
-    if(o && o.run([line.prefix, line.params], this))
+    if(o && o.run([line, line.prefix, line.params], this))
       return
 
-    this.rawNumeric(line.command, line.prefix, line.params);
+    this.rawNumeric(line, line.command, line.prefix, line.params);
   },
   isChannel: function(target) {
     var c = target.charAt(0);
@@ -685,11 +685,11 @@ qwebirc.irc.IRCClient = new Class({
       }, this);
     }
   },
-  irc_AUTHENTICATE: function(prefix, params) {
+  irc_AUTHENTICATE: function(line, prefix, params) {
     /* Silently hide. */
     return true;
   },
-  irc_CAP: function(prefix, params) {
+  irc_CAP: function(line, prefix, params) {
     switch(params[1]) {
     case "ACK":
       var capslist = [];
@@ -712,7 +712,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_RPL_WELCOME: function(prefix, params) {
+  irc_RPL_WELCOME: function(line, prefix, params) {
     this.nickname = params[0];
     this.signedOn = true;
     this.tracker = new qwebirc.irc.IRCTracker(this);
@@ -723,7 +723,7 @@ qwebirc.irc.IRCClient = new Class({
     }
     this.fireEvent("signedOn");
   },
-  irc_NICK: function(prefix, params) {
+  irc_NICK: function(line, prefix, params) {
     var user = prefix;
     var oldnick = user.hostToNick();
     var newnick = params[0];
@@ -735,7 +735,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_QUIT: function(prefix, params) {
+  irc_QUIT: function(line, prefix, params) {
     var user = prefix;
 
     var message = params.indexFromEnd(-1);
@@ -744,7 +744,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_PART: function(prefix, params) {
+  irc_PART: function(line, prefix, params) {
     var user = prefix;
     var channel = params[0];
     var message = params[1];
@@ -767,7 +767,7 @@ qwebirc.irc.IRCClient = new Class({
   __nowOnChannel: function(name) {
     this.channels[this.toIRCLower(name)] = 1;
   },
-  irc_KICK: function(prefix, params) {
+  irc_KICK: function(line, prefix, params) {
     var kicker = prefix;
     var channel = params[0];
     var kickee = params[1];
@@ -780,12 +780,12 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_PING: function(prefix, params) {
+  irc_PING: function(line, prefix, params) {
     this.send("PONG :" + params.indexFromEnd(-1));
 
     return true;
   },
-  irc_JOIN: function(prefix, params) {
+  irc_JOIN: function(line, prefix, params) {
     var channel = params[0];
     var user = prefix;
     var nick = user.hostToNick();
@@ -797,7 +797,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_TOPIC: function(prefix, params) {
+  irc_TOPIC: function(line, prefix, params) {
     var user = prefix;
     var channel = params[0];
     var topic = params.indexFromEnd(-1);
@@ -817,7 +817,7 @@ qwebirc.irc.IRCClient = new Class({
     }
     return message.splitMax(" ", 2);
   },
-  irc_PRIVMSG: function(prefix, params) {
+  irc_PRIVMSG: function(line, prefix, params) {
     var user = prefix;
     var target = params[0];
     var message = params.indexFromEnd(-1);
@@ -848,7 +848,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_NOTICE: function(prefix, params) {
+  irc_NOTICE: function(line, prefix, params) {
     var user = prefix;
     var target = params[0];
     var message = params.indexFromEnd(-1);
@@ -874,7 +874,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_INVITE: function(prefix, params) {
+  irc_INVITE: function(line, prefix, params) {
     var user = prefix;
     var channel = params.indexFromEnd(-1);
 
@@ -882,14 +882,14 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_ERROR: function(prefix, params) {
+  irc_ERROR: function(line, prefix, params) {
     var message = params.indexFromEnd(-1);
 
     this.serverError(message);
 
     return true;
   },
-  irc_MODE: function(prefix, params) {
+  irc_MODE: function(line, prefix, params) {
     var user = prefix;
     var target = params[0];
     var args = params.slice(1);
@@ -927,7 +927,7 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_RPL_ISUPPORT: function(prefix, params) {
+  irc_RPL_ISUPPORT: function(line, prefix, params) {
     var supported = params.slice(1, -1);
 
     var items = {};
@@ -944,7 +944,7 @@ qwebirc.irc.IRCClient = new Class({
       this.supported(l[0], l[1]);
     }
   },
-  irc_RPL_NAMREPLY: function(prefix, params) {
+  irc_RPL_NAMREPLY: function(line, prefix, params) {
     var channel = params[2];
     var names = params[3];
 
@@ -952,13 +952,13 @@ qwebirc.irc.IRCClient = new Class({
 
     return true;
   },
-  irc_RPL_ENDOFNAMES: function(prefix, params) {
+  irc_RPL_ENDOFNAMES: function(line, prefix, params) {
     var channel = params[1];
 
     this.channelNames(channel, []);
     return true;
   },
-  irc_RPL_NOTOPIC: function(prefix, params) {
+  irc_RPL_NOTOPIC: function(line, prefix, params) {
     var channel = params[1];
 
     if(this.__getChannel(channel)) {
@@ -966,7 +966,7 @@ qwebirc.irc.IRCClient = new Class({
       return true;
     }
   },
-  irc_RPL_TOPIC: function(prefix, params) {
+  irc_RPL_TOPIC: function(line, prefix, params) {
     var channel = params[1];
     var topic = params.indexFromEnd(-1);
 
@@ -975,116 +975,116 @@ qwebirc.irc.IRCClient = new Class({
       return true;
     }
   },
-  irc_RPL_TOPICWHOTIME: function(prefix, params) {
+  irc_RPL_TOPICWHOTIME: function(line, prefix, params) {
     return true;
   },
-  irc_RPL_WHOISUSER: function(prefix, params) {
+  irc_RPL_WHOISUSER: function(line, prefix, params) {
     var nick = params[1];
     this.whoisNick = nick;
 
     return this.whois(nick, "user", {ident: params[2], hostname: params[3], realname: params.indexFromEnd(-1)});
   },
-  irc_RPL_WHOISSERVER: function(prefix, params) {
+  irc_RPL_WHOISSERVER: function(line, prefix, params) {
     var nick = params[1];
     var server = params[2];
     var serverdesc = params.indexFromEnd(-1);
 
     return this.whois(nick, "server", {server: params[2], serverdesc: params.indexFromEnd(-1)});
   },
-  irc_RPL_WHOISOPERATOR: function(prefix, params) {
+  irc_RPL_WHOISOPERATOR: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
 
     return this.whois(nick, "oper", {opertext: params.indexFromEnd(-1)});
   },
-  irc_RPL_WHOISIDLE: function(prefix, params) {
+  irc_RPL_WHOISIDLE: function(line, prefix, params) {
     var nick = params[1];
 
     return this.whois(nick, "idle", {idle: params[2], connected: params[3]});
   },
-  irc_RPL_WHOISCHANNELS: function(prefix, params) {
+  irc_RPL_WHOISCHANNELS: function(line, prefix, params) {
     var nick = params[1];
 
     return this.whois(nick, "channels", {channels: params.indexFromEnd(-1)});
   },
-  irc_RPL_WHOISACCOUNT: function(prefix, params) {
+  irc_RPL_WHOISACCOUNT: function(line, prefix, params) {
     var nick = params[1];
 
     return this.whois(nick, "account", {account: params[2]});
   },
-  irc_RPL_WHOISACTUALLY: function(prefix, params) {
+  irc_RPL_WHOISACTUALLY: function(line, prefix, params) {
     var nick = params[1];
 
     return this.whois(nick, "actually", {hostmask: params[2], ip: params[3]});
   },
-  irc_RPL_WHOISOPERNAME: function(prefix, params) {
+  irc_RPL_WHOISOPERNAME: function(line, prefix, params) {
     var nick = params[1];
     var opername = params[2];
 
     return this.whois(nick, "opername", {opername: params[2]});
   },
-  irc_RPL_WHOISAVAILHELP: function(prefix, params) {
+  irc_RPL_WHOISAVAILHELP: function(line, prefix, params) {
     var nick = params[1];
     return this.whois(nick, "availhelp", {});
   },
-  irc_RPL_WHOISREGGED: function(prefix, params) {
+  irc_RPL_WHOISREGGED: function(line, prefix, params) {
     var nick = params[1];
     return this.whois(nick, "regged", {});
   },
-  irc_RPL_WHOISMODES: function(prefix, params) {
+  irc_RPL_WHOISMODES: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
     var modes = text.split(" ").slice(3).join(" ");
 
     return this.whois(nick, "modes", {modes: modes});
   },
-  irc_RPL_WHOISREALHOST: function(prefix, params) {
+  irc_RPL_WHOISREALHOST: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
     var hostname = text.split(" ")[3];
     var ip = text.split(" ")[4];
     return this.whois(nick, "realhost", {hostname: hostname, ip: ip});
   },
-  irc_RPL_WHOISGENERICTEXT: function(prefix, params) {
+  irc_RPL_WHOISGENERICTEXT: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
 
     return this.whois(nick, "generictext", {text: text});
   },
-  irc_RPL_WHOISWEBIRC: function(prefix, params) {
+  irc_RPL_WHOISWEBIRC: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
 
     return this.whois(nick, "generictext", {text: text});
   },
-  irc_RPL_WHOISSECURE: function(prefix, params) {
+  irc_RPL_WHOISSECURE: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
 
     return this.whois(nick, "generictext", {text: text});
   },
-  irc_RPL_ENDOFWHOIS: function(prefix, params) {
+  irc_RPL_ENDOFWHOIS: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
     this.whoisNick = null;
 
     return this.whois(nick, "end", {});
   },
-  irc_genericError: function(prefix, params) {
+  irc_genericError: function(line, prefix, params) {
     var target = params[1];
     var message = params.indexFromEnd(-1);
 
     this.genericError(target, message);
     return true;
   },
-  irc_genericQueryError: function(prefix, params) {
+  irc_genericQueryError: function(line, prefix, params) {
     var target = params[1];
     var message = params.indexFromEnd(-1);
 
     this.genericQueryError(target, message);
     return true;
   },
-  irc_genericNickInUse: function(prefix, params) {
+  irc_genericNickInUse: function(line, prefix, params) {
     this.genericError(params[1], params.indexFromEnd(-1).replace("in use.", "in use"));
 
     if(this.signedOn)
@@ -1107,7 +1107,7 @@ qwebirc.irc.IRCClient = new Class({
     this.irc_ERR_NICKNAMEINUSE = this.irc_ERR_UNAVAILRESOURCE = this.irc_genericNickInUse;
     return true;
   },
-  irc_RPL_AWAY: function(prefix, params) {
+  irc_RPL_AWAY: function(line, prefix, params) {
     var nick = params[1];
     var text = params.indexFromEnd(-1);
 
@@ -1117,29 +1117,29 @@ qwebirc.irc.IRCClient = new Class({
     this.awayMessage(nick, text);
     return true;
   },
-  irc_RPL_NOWAWAY: function(prefix, params) {
+  irc_RPL_NOWAWAY: function(line, prefix, params) {
     this.awayStatus(true, params.indexFromEnd(-1));
     return true;
   },
-  irc_RPL_UNAWAY: function(prefix, params) {
+  irc_RPL_UNAWAY: function(line, prefix, params) {
     this.awayStatus(false, params.indexFromEnd(-1));
     return true;
   },
-  irc_WALLOPS: function(prefix, params) {
+  irc_WALLOPS: function(line, prefix, params) {
     var user = prefix;
     var text = params.indexFromEnd(-1);
 
     this.wallops(user, text);
     return true;
   },
-  irc_RPL_CREATIONTIME: function(prefix, params) {
+  irc_RPL_CREATIONTIME: function(line, prefix, params) {
     var channel = params[1];
     var time = params[2];
 
     this.channelCreationTime(channel, time);
     return true;
   },
-  irc_RPL_CHANNELMODEIS: function(prefix, params) {
+  irc_RPL_CHANNELMODEIS: function(line, prefix, params) {
     var channel = params[1];
     var modes = params.slice(2);
 
