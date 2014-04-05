@@ -646,37 +646,17 @@ qwebirc.irc.IRCClient = new Class({
     this.newTargetOrActiveLine(channel, "CHANNELCREATIONTIME", {c: channel, m: qwebirc.irc.IRCDate(new Date(time * 1000))});
   },
   recv: function(s) {
-    var command = '';
-    var prefix = '';
-    var args = [];
-    var trailing = [];
-
-    if (s[0] == ':') {
-        var index = s.indexOf(' ');
-        prefix = s.substring(1, index);
-        s = s.substring(index + 1);
-    }
-    if (s.indexOf(' :') != -1) {
-        var index = s.indexOf(' :');
-        trailing = s.substring(index + 2);
-        args = s.substring(0, index).split(' ');
-        args.push(trailing);
-    } else {
-        args = s.split(' ');
-    }
-
-    command = args.splice(0, 1)[0].toUpperCase();
-
-    var n = qwebirc.irc.Numerics[command];
+    var line = new qwebirc.irc.IRCMessage(s);
+    var n = qwebirc.irc.Numerics[line.command];
     if(!n)
-      n = command;
+      n = line.command;
 
     var o = this["irc_" + n];
 
-    if(o && o.run([prefix, args], this))
+    if(o && o.run([line.prefix, line.params], this))
       return
 
-    this.rawNumeric(command, prefix, args);
+    this.rawNumeric(line.command, line.prefix, line.params);
   },
   isChannel: function(target) {
     var c = target.charAt(0);
@@ -1165,5 +1145,35 @@ qwebirc.irc.IRCClient = new Class({
 
     this.channelModeIs(channel, modes);
     return true;
+  }
+});
+
+qwebirc.irc.IRCMessage = new Class({
+  initialize: function(raw) {
+    this.raw = String(raw);
+    this.command = '';
+    this.prefix = '';
+    this.params = [];
+    this.params = [];
+    var trailing = '';
+
+    if (raw[0] == ':') {
+        var index = raw.indexOf(' ');
+        this.prefix = raw.substring(1, index);
+        raw = raw.substring(index + 1);
+    }
+    if (raw.indexOf(' :') != -1) {
+        var index = raw.indexOf(' :');
+        trailing = raw.substring(index + 2);
+        this.params = raw.substring(0, index).split(' ');
+        this.params.push(trailing);
+    } else {
+        this.params = raw.split(' ');
+    }
+
+    this.command = this.params.splice(0, 1)[0].toUpperCase();
+  },
+  toString: function() {
+    return this.raw;
   }
 });
