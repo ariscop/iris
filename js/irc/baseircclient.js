@@ -22,6 +22,8 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
 
     this.nickname = connOptions.nickname;
+    this.authUser = connOptions.authUser;
+    this.authSecret = connOptions.authSecret;
     this.lowerNickname = this.toIRCLower(this.nickname);
 
     this.__signedOn = false;
@@ -71,6 +73,9 @@ qwebirc.irc.BaseIRCClient = new Class({
       }
     }
   },
+  connected: function() {
+    this.send("CAP LS");
+  },
   isChannel: function(target) {
     var c = target.charAt(0);
     return c == '#';
@@ -100,23 +105,59 @@ qwebirc.irc.BaseIRCClient = new Class({
     }
   },
   irc_AUTHENTICATE: function(prefix, params) {
-    /* Silently hide. */
+    this.send("AUTHENTICATE "+btoa([this.authUser, this.authUser, this.authSecret].join('\0')));
     return true;
   },
+  irc_saslFinished: function(prefix, params) {
+    this.send("CAP END");
+    return false;
+  },
   irc_CAP: function(prefix, params) {
-    if(params[1] == "ACK") {
-      var capslist = [];
-      if (params[2] == "*")
-        capslist = params[3].split(" ");
-      else
-        capslist = params[2].split(" ");
-
-      var i;
-      for (i = 0; i < capslist.length; i++) {
-        this.caps[capslist[i]] = true;
-        if (capslist[i] == "sasl")
-          this.rawNumeric("AUTHENTICATE", prefix, ["*", "Attempting SASL authentication..."]);
+    var caplist;
+    switch(params[1]) {
+    case "ACK":
+      if (params[2] == "*") {
+        caplist = params[3].split(" ");
+      } else {
+        caplist = params[2].split(" ");
       }
+
+      for (i = 0; i < caplist.length; i++)
+        this.caps[caplist[i]] = true
+
+      if (params[2] != "*") {
+        if(this.caps.sasl)
+          this.send("AUTHENTICATE PLAIN");
+        else
+          this.send("CAP END");
+      }
+      break;
+    case "NAK":
+      this.send("CAP END");
+      break;
+    case "LS":
+      if (params[2] == "*") {
+        caplist = params[3].split(" ");
+      } else {
+        caplist = params[2].split(" ");
+      }
+
+      for (i = 0; i < caplist.length; i++) {
+        if (caplist[i] == "sasl")
+          this.caps[caplist[i]] = false;
+        if (caplist[i] == "multi-prefix")
+          this.caps[caplist[i]] = false;
+      }
+
+      if (params[2] != "*") {
+        caplist = Object.keys(this.caps);
+        if(caplist.length) {
+          this.send("CAP REQ :"+caplist.join(" "));
+        } else {
+          this.send("CAP END");
+        }
+      }
+      break;
     }
 
     return true;
@@ -512,6 +553,9 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.irc_ERR_CHANOPPRIVSNEEDED = this.irc_ERR_CANNOTSENDTOCHAN = this.irc_genericError;
     this.irc_ERR_NOSUCHNICK = this.irc_genericQueryError;
     this.irc_ERR_NICKNAMEINUSE = this.irc_ERR_UNAVAILRESOURCE = this.irc_genericNickInUse;
+    this.irc_RPL_LOGGEDIN = this.irc_ERR_NICKLOCKED = this.irc_saslFinished;
+    this.irc_ERR_SASLFAIL = this.irc_ERR_SASLTOOLONG = this.irc_saslFinished;
+    this.irc_ERR_SASLABORTED = this.irc_ERR_SASLALREADY = this.irc_saslFinished;
     return true;
   },
   irc_RPL_AWAY: function(prefix, params) {

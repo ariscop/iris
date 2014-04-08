@@ -494,6 +494,7 @@ qwebirc.irc.IRCClient = new Class({
     this.parent(key, value);
   },
   connected: function() {
+    this.parent();
     qwebirc.connected = true;
     this.newServerLine("CONNECT");
     this.send("NICK "+this.nickname);
