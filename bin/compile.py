@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import dependencies
 dependencies.vcheck()
 
@@ -28,7 +28,7 @@ def jmerge_files(prefix, suffix, output, files, *args, **kwargs):
   merge_files(o, files, *args)
   
   # cough hack
-  skipjar = False
+  skipjar = True
   for arg in sys.argv:
     if arg == "debug":
       skipjar = True
@@ -75,6 +75,12 @@ def merge_files(output, files, root_path=lambda x: x):
     f2.close()
   f.close()
 
+def mkdir(path):
+  try:
+    os.mkdir(path)
+  except:
+    pass
+
 def main(outputdir=".", produce_debug=True):
   ID = pagegen.getgitid()
   
@@ -85,11 +91,9 @@ def main(outputdir=".", produce_debug=True):
     os.mkdir(coutputdir)
   except:
     pass
-    
-  try:
-    os.mkdir(os.path.join(outputdir, "static", "css"))
-  except:
-    pass
+  
+  mkdir(os.path.join(outputdir, "static", "css"))
+  mkdir(os.path.join(outputdir, "static", "swf"))
   
   for uiname, value in pages.UIs.items():
     csssrc = pagegen.csslist(uiname, True)

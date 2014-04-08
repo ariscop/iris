@@ -94,6 +94,24 @@ webirc_mode:
 webirc_password: fish
 
 
+# FRONTEND IRC CONNECTION OPTIONS
+# These options provide the needed information for the frontend to connect to
+# the IRC server via tcp using a flash plugin.
+# They require a backend restart and a rerun of compile.py to update.
+[flash]
+
+# ENABLED: Use flash plugin for irc connection.
+enabled: false
+
+# SERVER: Hostname (or IP address) of IRC server to connect to.
+server: irc.myserver.com
+
+# PORT: Port of IRC server to connect to.
+port: 6667
+
+# XMLPORT: Port of IRC servers flash policy daemon
+xmlport: 8430
+
 
 # ATHEME ENGINE OPTIONS
 # These options control communication with Atheme by the Atheme engine backend,

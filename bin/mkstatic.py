@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 import compile, pages, sys, os, shutil, compileall
 
 def trymkdir(*dir):

@@ -35,6 +35,8 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.nextctcp = 0;
 
     this.connections = [qwebirc.irc.IRCConnection];
+    if(conf.flash.enabled)
+      this.connections.push(qwebirc.irc.FlashConnection);
 
     this.setupGenericErrors();
   },

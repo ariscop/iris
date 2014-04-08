@@ -32,6 +32,7 @@ booleans = [
     ("ui", "flash_on_mention"),
     ("ui", "beep_on_mention"),
     ("ui", "simple_color"),
+    ("flash", "enabled"),
 ]
     
 floats = [
@@ -50,6 +51,8 @@ integers = [
     ("tuneback", "maxbuflen"),
     ("tuneback", "maxlinelen"),
     ("tuneback", "maxsubscriptions"),
+    ("flash", "port"),
+    ("flash", "xmlport"),
 ]
 
 lists = [
@@ -82,4 +85,5 @@ strings = [
     ("ui", "fg_color"),
     ("ui", "fg_sec_color"),
     ("ui", "bg_color"),
+    ("flash", "server"),
 ]

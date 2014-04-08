@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 # this entire thing is a hack and badly needs reimplementing
 import bin.compile
 bin.compile.vcheck()
