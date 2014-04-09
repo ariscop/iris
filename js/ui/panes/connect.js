@@ -222,7 +222,14 @@ qwebirc.ui.Panes.Connect.pclass = new Class({
     this.nickBox = new Element("input");
     createRow("Nickname:", this.nickBox);
 
-    if (conf.atheme.nickserv_login) {
+    if(conf.atheme.sso_login) {
+      var cookie = JSON.decode(atob(window.location.hash.substr(1)));
+      if(cookie && cookie.user) {
+        this.session.atheme.state = true;
+        this.session.atheme.user = cookie["user"];
+        this.session.atheme.secret = cookie["secret"];
+      }
+    } else if (conf.atheme.nickserv_login) {
       var srvbutton = new Element("input");
       srvbutton.set("type", "checkbox");
       srvbutton.set("checked", false);
@@ -299,7 +306,7 @@ qwebirc.ui.Panes.Connect.pclass = new Class({
       }
       Cookie.write("iris-nick", this.nickBox.value, {"duration": 3650});
 
-      if (conf.atheme.nickserv_login) {
+      if (conf.atheme.nickserv_login && !conf.atheme.sso_login) {
         if (srvbutton.checked) {
           if (!user.value) {
             alert("You must supply a username.");

@@ -234,6 +234,11 @@ dynamic_base_url: /
 # If an XML-RPC connection isn't available, will fall back to SASL PLAIN.
 nickserv_login: true
 
+# SSO: Enable 'Single Sign On'. The embed will expect an AUTHCOOKIE to
+# be passed via a url fragment. This requires nickserv_login
+# If an XML-RPC connection isn't available, will fall back to SASL PLAIN.
+sso_login: false
+
 # CHAN LIST ON START: Open the channel listing automatically when the
 # client starts. Requires the channel list be enabled, obviously.
 # Always defaults off if any query string parameters are specified; must be

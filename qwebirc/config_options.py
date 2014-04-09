@@ -17,6 +17,7 @@ booleans = [
     ("atheme", "nickserv_login"),
     ("atheme", "chan_list_cloud_view"),
     ("atheme", "chan_list_on_start"),
+    ("atheme", "sso_login"),
     ("athemeengine", "chan_list_enabled"),
     ("frontend", "prompt"),
     ("frontend", "chan_prompt"),
