@@ -24,12 +24,36 @@ qwebirc.ui.urlificate = function(session, element, text) {
   };
 
   var appendText = function(text) {
-    var e = text.split(/(  )/);
+    var base = "https://d1zza4deob1qzz.cloudfront.net/themes/ponychat/images/emoticons/pony/";
+    var emotes = {
+      ":)": "twilightsmile.gif",
+      ";)": "raritywink.gif",
+      ":D": "rainbowlaugh.gif",
+      ":P": "derpytongue2.gif",
+      ":(": "fluttershysad.gif",
+      ":$": "twilightblush.gif",
+      ":O": "pinkiegasp.gif",
+      ":|": "trixieshiftleft.gif",
+      ":'(": "fluttercry.gif",
+      ":S": "unsuresweetie.gif",
+      ":[": "flutterrage.gif",
+      "<3": "heart.gif",
+      "6_9": "derpyderp1.gif",
+      ">_>": "aj-lie-1.gif",
+      "<_<": "aj-lie-2.gif"
+    }
+    var e = text.split(/(:\)|;\)|:D|:P|:\(|:\$|:O|:\||:'\(|:S|:\[|<3|6_9|>_>|<_<|  )/);
     for(var i=0;i<e.length;i++) {
       if(e[i] == "  ") {
         var e2 = new Element("span");
         e2.set("html", "&nbsp;&nbsp;");
         element.appendChild(e2);
+      } else if(emotes[e[i]]) {
+        var img = document.createElement("img");
+        img.setAttribute("src", base+emotes[e[i]]);
+        img.setAttribute("alt", e[i]);
+        img.setAttribute("title", e[i]);
+        element.appendChild(img);
       } else {
         var tn = document.createTextNode(e[i]);
         element.appendChild(tn);
