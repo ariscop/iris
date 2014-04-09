@@ -90,6 +90,9 @@ def __interpret_config():
                 # Special case: nickserv login will fall back to SASL PLAIN
                 # instead of being completely unavailable without XML-RPC.
                 continue
+            if option == "sso_login":
+                # Special case: sso login will also fall back to SASL PLAIN
+                continue
             atheme[option] = False
 
         # No XML-RPC connection, fall back to SASL PLAIN.
@@ -109,6 +112,7 @@ def __interpret_config():
     # There's no SASL type if login is disabled...
     if atheme["nickserv_login"] == False:
         atheme["sasl_type"] = False
+        atheme["sso_login"] = False
 
     # If no secondary foreground colour was specified, use the primary.
     if not "fg_sec_color" in ui:
