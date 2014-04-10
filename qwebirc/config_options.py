@@ -8,6 +8,7 @@ sections = [
     "feedbackengine",
     "frontend",
     "flash",
+    "websocket",
     "irc",
     "proxy",
     "tuneback",
@@ -88,4 +89,5 @@ strings = [
     ("ui", "fg_sec_color"),
     ("ui", "bg_color"),
     ("flash", "server"),
+    ("websocket", "url"),
 ]

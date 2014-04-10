@@ -140,6 +140,7 @@ def js_config():
         'frontend': f,
         'ui': ui,
         'flash': flash,
+        'websocket': websocket,
     }
     return json.dumps(options)
 
