@@ -1,3 +1,4 @@
+/*
 qwebirc.ui.Panes.Embed = {
   title: "Webchat Wizard",
   command: function(session) { return "EMBED"; },
@@ -305,8 +306,9 @@ qwebirc.ui.Panes.Embed.pclass = new Class({
     return conf.frontend.base_url + (URL.length>0?"?":"") + URL.join("&");
   }
 });
-
+*/
 /* NEEDS converting to plain HTML! */
+/*
 qwebirc.ui.Panes.Embed.Step = new Class({
   Implements: [Options, Events],
   options: {
@@ -336,3 +338,4 @@ qwebirc.ui.Panes.Embed.Step = new Class({
     this.fireEvent("show");
   }
 });
+*/
