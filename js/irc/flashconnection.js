@@ -14,8 +14,7 @@ qwebirc.irc.FlashConnection = new Class({
     this.setOptions(options, conf.flash);
   },
   connect: function() {
-    this.raw_buffer = [];
-    this.buffer = "";
+    this.buffer = [];
     if(!FlashSocket.connect) {
       this.fireEvent("recv", [["disconnect", "No Flash support"]]);
       return;
@@ -42,60 +41,63 @@ qwebirc.irc.FlashConnection = new Class({
     FlashSocket.write(String(data)+"\r\n");
     return true;
   },
-  recv: function recv(data) {
-    var utf8len = function(code) {
-      if(     (code & 0x80) == 0x00) return 1;
-      else if((code & 0xE0) == 0xC0) return 2;
-      else if((code & 0xF0) == 0xE0) return 3;
-      else if((code & 0xF8) == 0xF0) return 4;
-      else return 1; /* invalid */
+  recv: function(data) {
+    var LF = 10;
+    var buffer = this.buffer.concat(data);
+    var i = buffer.indexOf(LF);
+    while(i != -1) {
+      var msg = buffer.splice(0, i+1);
+      msg.pop(); //LF
+      msg.pop(); //CR
+      this.fireEvent("recv", [["c", this.decode(msg)]]);
+      i = buffer.indexOf(LF);
     }
-    var decode = function(arr, out) {
+    this.buffer = buffer;
+  },
+  decode: function(buffer) {
+    var replace = 65533; //U+FFFD 'REPLACEMENT CHARACTER'
+    var points = [];
+    var i = 0;
+    while(i < buffer.length) {
+      var len = 0;
       var point = 0;
-      switch(arr.length) {
-      case 1:
-        point = arr[0];
-        break;
-      case 2:
-        point  = (arr[0] & 0x1F) << 6;
-        point |= (arr[1] & 0x3F);
-        break;
-      case 3:
-        point  = (arr[0] & 0x0F) << 12;
-        point |= (arr[1] & 0x3F) << 6;
-        point |= (arr[2] & 0x3F);
-        break;
-      case 4:
-        point  = (arr[0] & 0x07) << 18;
-        point |= (arr[1] & 0x3F) << 12;
-        point |= (arr[2] & 0x3F) << 6;
-        point |= (arr[3] & 0x3F);
-        break;
+      if ((buffer[i] & 0x80) == 0x00) {
+        point = buffer[i++]
+      } else if((buffer[i] & 0xE0) == 0xC0) {
+        len = 1;
+        point = (buffer[i++] & 0x1F);
+      } else if((buffer[i] & 0xF0) == 0xE0) {
+        len = 2;
+        point = (buffer[i++] & 0x0F)
+      } else if((buffer[i] & 0xF8) == 0xF0) {
+        len = 3;
+        point = (buffer[i++] & 0x07)
+      } else {
+        point = replace;
+        i++;
       }
+      for(x = 0; x < len && i < buffer.length; x++) {
+        var octet = buffer[i++];
+        if((octet & 0xC0) != 0x80)
+          break;
+        point = (point << 6) | (octet & 0x3F);
+      }
+      /* Prevent ascii being snuck past in unicode */
+      if(len != 0 && point < 0x80)
+        point = replace;
+      /* Replace partial characters */
+      if(x != len)
+        point = replace;
+
       if(point >= 0x10000) {
         point -= 0x10000;
-        out.push((point >>   10) + 0xD800,
-                 (point % 0x400) + 0xDC00);
+        points.push((point >>   10) + 0xD800);
+        points.push((point % 0x400) + 0xDC00);
       } else {
-        out.push(point);
+        points.push(point);
       }
     }
-    var i = 0, points = [];
-    var raw = this.raw_buffer.concat(data);
-    while(1) {
-      var len = utf8len(raw[i]);
-      if(len > (raw.length - i))
-        break;
-      decode(raw.slice(i, i+len), points);
-      i += len;
-    }
-    this.raw_buffer = raw.splice(i);
-    this.buffer += String.fromCharCode.apply(null, points);
-
-    var m = this.buffer.split("\r\n");
-    while (m.length > 1)
-      this.fireEvent("recv", [["c", m.shift()]]);
-    this.buffer = m[0];
+    return String.fromCharCode.apply(null, points);
   },
   __state: function(state, msg) {
     if(state == 1 /* OPEN */)
