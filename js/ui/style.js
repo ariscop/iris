@@ -38,7 +38,7 @@ qwebirc.ui.style.ModifiableStylesheet = new Class({
     }
   },
   __parseStylesheet: function(data) {
-    var lines = data.replace("\r\n", "\n").split("\n");
+    var lines = data.split(/\r?\n/);
 
     var rules = {};
     var i;
