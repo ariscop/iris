@@ -116,17 +116,17 @@ qwebirc.util.pad = function(x) {
   return x
 }
 
-RegExp.escape = function(text) {
-  if(!arguments.callee.sRE) {
-    var specials = [
-      '/', '.', '*', '+', '?', '|',
-      '(', ')', '[', ']', '{', '}', '\\'
-    ];
-    arguments.callee.sRE = new RegExp('(\\' + specials.join('|\\') + ')', 'g');
-  }
+RegExp.escape = (function() {
+  var specials = [
+    '/', '.', '*', '+', '?', '|',
+    '(', ')', '[', ']', '{', '}', '\\'
+  ];
+  var sRE = new RegExp('(\\' + specials.join('|\\') + ')', 'g');
 
-  return text.replace(arguments.callee.sRE, '\\$1');
-}
+  return function escape(text) {
+    return text.replace(arguments.callee.sRE, '\\$1');
+  }
+})()
 
 qwebirc.ui.insertAt = function(position, parent, element) {
   if(!parent.childNodes || (position >= parent.childNodes.length)) {

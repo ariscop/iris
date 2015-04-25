@@ -2,7 +2,7 @@
 qwebirc.ui.create = function(element, uiclass) {
 
   /* Initialise our Atheme login and single session. */
-  session = new qwebirc.session();
+  var session = new qwebirc.session();
 
   /* Now wait until all the JS is loaded. */
   window.addEvent("domready", function() {
@@ -18,7 +18,7 @@ qwebirc.ui.create = function(element, uiclass) {
     };
 
     /* Create UI. */
-    ui = new uiclass(this.session, $(element));
+    ui = new uiclass(session, $(element));
 
     /* Create login window. */
     ui.connectWindow(callback);

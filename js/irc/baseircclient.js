@@ -193,7 +193,7 @@ qwebirc.irc.BaseIRCClient = new Class({
         caplist = params[2].split(" ");
       }
 
-      for (i = 0; i < caplist.length; i++) {
+      for (var i = 0; i < caplist.length; i++) {
         if (caplist[i] == "sasl")
           this.caps[caplist[i]] = false;
         if (caplist[i] == "multi-prefix")
