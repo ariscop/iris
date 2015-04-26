@@ -1,7 +1,13 @@
 qwebirc.ui.Panes.Embed = {
   title: "Webchat Wizard",
-  command: function(session) { return "EMBED"; },
-  menuitem: function(session) { return "Add webchat to your site"; },
+  command: function(session) {
+    if (conf.frontend.base_url)
+      return "EMBED";
+  },
+  menuitem: function(session) {
+    if (conf.frontend.base_url)
+      return "Add webchat to your site";
+  },
   menupos: 200
 };
 
