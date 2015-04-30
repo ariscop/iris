@@ -404,11 +404,6 @@ qwebirc.ui.QUI.Window = new Class({
     if(type != qwebirc.ui.WINDOW_CUSTOM)
       this.lines.addClass("ircwindow");
 
-    this.lines.addEvent("scroll", function() {
-      this.scrolleddown = this.scrolledDown();
-      this.scrollpos = this.getScrollParent().getScroll();
-    }.bind(this));
-
     if(type == qwebirc.ui.WINDOW_CHANNEL) {
       this.topic = new Element("div");
       this.topic.addClass("topic");
@@ -449,19 +444,6 @@ qwebirc.ui.QUI.Window = new Class({
     ui.reflow();
   },
   onResize: function() {
-    if(this.scrolleddown) {
-      if(Browser.Engine.trident) {
-        this.scrollToBottom.delay(5, this);
-      } else {
-        this.scrollToBottom();
-      }
-    } else if($defined(this.scrollpos)) {
-      if(Browser.Engine.trident) {
-        this.getScrollParent().scrollTo(this.scrollpos.x, this.scrollpos.y);
-      } else {
-        this.getScrollParent().scrollTo.delay(5, this, [this.scrollpos.x, this.scrollpos.y]);
-      }
-    }
   },
   createMenu: function(nick, parent) {
     var e = new Element("div");

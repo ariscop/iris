@@ -14,10 +14,7 @@ qwebirc.ui.Window = new Class({
     this.active = false;
     this.identifier = identifier;
     this.hilighted = qwebirc.ui.HILIGHT_NONE;
-    this.scrolltimer = null;
     this.commandhistory = ui.commandhistory;
-    this.scrolleddown = true;
-    this.scrollpos = null;
     this.lastNickHash = {};
     this.lastSelected = null;
     this.subWindow = null;
@@ -51,35 +48,15 @@ qwebirc.ui.Window = new Class({
       this.setHilighted(qwebirc.ui.HILIGHT_NONE);
 
     this.subEvent("select");
-    this.resetScrollPos();
     this.lastSelected = new Date();
   },
   deselect: function() {
     this.subEvent("deselect");
 
-    this.setScrollPos();
-    if($defined(this.scrolltimer)) {
-      $clear(this.scrolltimer);
-      this.scrolltimer = null;
-    }
-
     if(this.type & qwebirc.ui.WINDOW_LASTLINE)
       this.replaceLastPositionLine();
 
     this.active = false;
-  },
-  resetScrollPos: function() {
-    if(this.scrolleddown) {
-      this.scrollToBottom();
-    } else if($defined(this.scrollpos)) {
-      this.getScrollParent().scrollTo(this.scrollpos.x, this.scrollpos.y);
-    }
-  },
-  setScrollPos: function() {
-    if(!ui.singleWindow) {
-      this.scrolleddown = this.scrolledDown();
-      this.scrollpos = this.lines.getScroll();
-    }
   },
   addLine: function(type, line, colour, element) {
     var hilight = qwebirc.ui.HILIGHT_NONE;
@@ -128,57 +105,12 @@ qwebirc.ui.Window = new Class({
     if(state == qwebirc.ui.HILIGHT_NONE || state >= this.hilighted)
       this.hilighted = state;
   },
-  scrolledDown: function() {
-    if(this.scrolltimer)
-      return true;
-
-    var parent = this.lines;
-
-    var prev = parent.getScroll();
-    var prevbottom = parent.getScrollSize().y;
-    var prevheight = parent.clientHeight;
-
-    /*
-     * fixes an IE bug: the scrollheight is less than the actual height
-     * when the div isn't full
-     */
-    if(prevbottom < prevheight)
-      prevbottom = prevheight;
-
-    return prev.y + prevheight == prevbottom;
-  },
-  getScrollParent: function() {
-    var scrollparent = this.lines;
-
-    if($defined(this.scroller))
-      scrollparent = this.scroller;
-    return scrollparent;
-  },
-  scrollToBottom: function() {
-    if(this.type == qwebirc.ui.WINDOW_CUSTOM)
-      return;
-
-    var parent = this.lines;
-    var scrollparent = this.getScrollParent();
-
-    scrollparent.scrollTo(parent.getScroll().x, parent.getScrollSize().y);
-  },
   scrollAdd: function(element) {
     var parent = this.lines;
 
-    /* scroll in bursts, else the browser gets really slow */
-    if($defined(element)) {
-      var sd = this.scrolledDown();
+    /* add element and scroll (TODO: scroll) */
+    if($defined(element))
       parent.appendChild(element);
-      if(sd) {
-        if(this.scrolltimer)
-          $clear(this.scrolltimer);
-        this.scrolltimer = this.scrollAdd.delay(50, this, [null]);
-      }
-    } else {
-      this.scrollToBottom();
-      this.scrolltimer = null;
-    }
   },
   updateNickList: function(nicks) {
     var nickHash = {}, present = {};
