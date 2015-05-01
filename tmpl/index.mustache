@@ -2,12 +2,14 @@
   "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html lang="en">
 <head>
-  <title>{{title}}</title>
+  <title>Iris Web IRC</title>
   <meta http-equiv="Content-Type" content="text/html;charset=utf-8"/>
   <link rel="shortcut icon" type="image/png" href="images/favicon.png"/>
   <link rel="stylesheet" href="css/colours.css" type="text/css"/>
   <link rel="stylesheet" href="css/dialogs.css" type="text/css"/>
-  <script type="text/javascript" src="qui-{{VERSION}}.js"></script>
+  {{#src}}
+  <script type="text/javascript" src="{{{.}}}"></script>
+  {{/src}}
   <script type="text/javascript" src="config.js"></script>
   <script type="text/javascript">
     qwebirc.ui.create("ircui", qwebirc.ui.QUI);
