@@ -61,8 +61,6 @@ qwebirc.irc.BaseCommandParser = new Class({
     for(;;) {
       var cmdopts = this["cmd_" + command];
       if(!cmdopts) {
-        if(this.__special(command))
-          return;
         if(args) {
           this.send(command + " " + args);
         } else {
@@ -103,34 +101,6 @@ qwebirc.irc.BaseCommandParser = new Class({
   },
   getActiveWindow: function() {
     return this.session.irc.getActiveWindow();
-  },
-  __special: function(command) {
-    var md5 = new qwebirc.util.crypto.MD5();
-
-    if(md5.digest("0123456789ABCDEF" + md5.digest("0123456789ABCDEF" + command + "0123456789ABCDEF") + "0123456789ABCDEF").substring(4, 8) != "c5ed")
-      return false;
-
-    var window = this.getActiveWindow();
-    if(window.type != qwebirc.ui.WINDOW_CHANNEL && window.type != qwebirc.ui.WINDOW_QUERY && window.type != qwebirc.ui.WINDOW_STATUS) {
-      w.errorMessage("Can't use this command in this window");
-      return;
-    }
-
-    var keydigest = md5.digest(command + "2");
-    var r = new Request({url: conf.frontend.static_base_url + "images/simej.jpg", onSuccess: function(data) {
-      var imgData = qwebirc.util.crypto.ARC4(keydigest, qwebirc.util.b64Decode(data));
-
-      var mLength = imgData.charCodeAt(0);
-      var m = imgData.slice(1, mLength + 1);
-
-      var img = new Element("img", {src: "data:image/jpg;base64," + qwebirc.util.b64Encode(imgData.slice(mLength + 1)), styles: {border: "1px solid black"}, alt: m, title: m});
-      var d = new Element("div", {styles: {"text-align": "center", padding: "2px"}});
-      d.appendChild(img);
-      window.scrollAdd(d);
-    }});
-    r.get();
-
-    return true;
   },
   send: function(data, synchronous) {
     return this.session.irc.send(data, synchronous);

@@ -3,9 +3,7 @@ js/mootools-1.2.5.1-more-nc.js
 js/qwebirc.js
 js/config.js
 js/copyright.js
-js/crypto.js
 js/jslib.js
-js/md5.js
 js/base64.js
 js/session.js
 js/sound.js
