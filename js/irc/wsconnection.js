@@ -33,7 +33,7 @@ qwebirc.irc.WSConnection = new Class({
     this.socket.close();
   },
   disconnected: function(e) {
-    this.fireEvent("recv", [["disconnect", e.reason ? e.reason : "Unknown reason"]]);
+    this.fireEvent("recv", [["disconnect", ""+(e.reason ? e.reason : "Unknown reason")+" ("+e.code+")"]]);
   },
   send: function(data, synchronous) {
     this.socket.send(String(data));
