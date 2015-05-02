@@ -130,10 +130,6 @@ qwebirc.ui.BaseUI = new Class({
 
     /* Window cleanup. */
     window.closed = true;
-    if($defined(window.scrolltimer)) {
-      $clear(window.scrolltimer);
-      window.scrolltimer = null;
-    }
 
     /* Transfer active window. */
     if(window.active) {
