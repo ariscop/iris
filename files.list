@@ -1,10 +1,10 @@
+js/compat/base64.js
 js/mootools-1.2.5-core-nc.js
 js/mootools-1.2.5.1-more-nc.js
 js/qwebirc.js
 js/config.js
 js/copyright.js
 js/jslib.js
-js/base64.js
 js/session.js
 js/sound.js
 js/version.js
