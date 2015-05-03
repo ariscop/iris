@@ -76,7 +76,7 @@ qwebirc.irc.BaseIRCClient = new Class({
       } else {
         this.disconnected(data[1]);
       }
-      if(this.__connected) {
+      if(this.__signedOn) {
         this.disconnect();
       } else {
         this.tryConnect();
