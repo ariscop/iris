@@ -1,6 +1,7 @@
 
 qwebirc.irc.WSConnection = new Class({
   Implements: [Events, Options],
+  Binds: ["connected", "disconnected", "recv"],
   options: {
     initialNickname: "ircconnX",
     url: "ws://irc.example.com/",
@@ -17,9 +18,9 @@ qwebirc.irc.WSConnection = new Class({
       return;
     }
     this.socket = new WebSocket(this.options.url, "irc");
-    this.socket.onopen = this.connected.bind(this);
-    this.socket.onclose = this.disconnected.bind(this);
-    this.socket.onmessage = this.recv.bind(this);
+    this.socket.onopen = this.connected;
+    this.socket.onclose = this.disconnected;
+    this.socket.onmessage = this.recv;
   },
   connected: function(e) {
     this.send("CAP LS");
