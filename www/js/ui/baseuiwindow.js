@@ -116,7 +116,7 @@ qwebirc.ui.Window = new Class({
   scrollAdd: function(element) {
     var parent = this.lines;
 
-    /* add element and scroll (TODO: scroll) */
+    /* add element and scroll */
     if($defined(element)) {
       parent.appendChild(element);
       if($defined(parent.scroller))
