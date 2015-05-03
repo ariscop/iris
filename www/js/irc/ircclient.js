@@ -437,8 +437,8 @@ qwebirc.irc.IRCClient = new Class({
     }, this);
   },
   disconnected: function(message) {
-    for(var x in session.windows) {
-      var w = session.windows[x];
+    for(var x in this.session.windows) {
+      var w = this.session.windows[x];
       if(w.type == qwebirc.ui.WINDOW_CHANNEL)
         ui.closeWindow(w);
     }

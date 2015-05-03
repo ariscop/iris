@@ -25,7 +25,7 @@ qwebirc.ui.TabCompleterFactory = new Class({
       if(text == "") {
         preword = "/msg ";
         obj = qwebirc.ui.QueryTabCompleter;
-      } else if(session.irc.isChannel(word)) {
+      } else if(this.session.irc.isChannel(word)) {
         obj = qwebirc.ui.ChannelNameTabCompleter;
       } else if(ltext.match(/^\/(q|query|msg) /i)) {
         obj = qwebirc.ui.QueryTabCompleter;
@@ -49,7 +49,7 @@ qwebirc.ui.TabCompleterFactory = new Class({
       if(postword == "")
         postword = " ";
 
-      this.obj = new obj(session, preword, word, postword, w);
+      this.obj = new obj(this.session, preword, word, postword, w);
       if(!$defined(this.obj))
         return;
     }
