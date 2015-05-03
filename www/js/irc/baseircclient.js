@@ -31,7 +31,6 @@ qwebirc.irc.BaseIRCClient = new Class({
     this.caps = {};
     this.sasl_timeout = false;
     this.pmodes = {b: qwebirc.irc.PMODE_LIST, l: qwebirc.irc.PMODE_SET_ONLY, k: qwebirc.irc.PMODE_SET_UNSET, o: qwebirc.irc.PMODE_SET_UNSET, v: qwebirc.irc.PMODE_SET_UNSET};
-    this.channels = {}
     this.nextctcp = 0;
 
     this.connections = [];
@@ -248,30 +247,15 @@ qwebirc.irc.BaseIRCClient = new Class({
 
     var nick = user.hostToNick();
 
-    if((nick == this.nickname) && this.__getChannel(channel))
-      this.__killChannel(channel);
-
     this.userPart(user, channel, message);
 
     return true;
-  },
-  __getChannel: function(name) {
-    return this.channels[this.toIRCLower(name)];
-  },
-  __killChannel: function(name) {
-    delete this.channels[this.toIRCLower(name)];
-  },
-  __nowOnChannel: function(name) {
-    this.channels[this.toIRCLower(name)] = 1;
   },
   irc_KICK: function(prefix, params) {
     var kicker = prefix;
     var channel = params[0];
     var kickee = params[1];
     var message = params[2];
-
-    if((kickee == this.nickname) && this.__getChannel(channel))
-      this.__killChannel(channel);
 
     this.userKicked(kicker, channel, kickee, message);
 
@@ -286,9 +270,6 @@ qwebirc.irc.BaseIRCClient = new Class({
     var channel = params[0];
     var user = prefix;
     var nick = user.hostToNick();
-
-    if(nick == this.nickname)
-      this.__nowOnChannel(channel);
 
     this.userJoined(user, channel);
 
@@ -459,19 +440,13 @@ qwebirc.irc.BaseIRCClient = new Class({
   irc_RPL_NOTOPIC: function(prefix, params) {
     var channel = params[1];
 
-    if(this.__getChannel(channel)) {
-      this.initialTopic(channel, "");
-      return true;
-    }
+    this.initialTopic(channel, "");
   },
   irc_RPL_TOPIC: function(prefix, params) {
     var channel = params[1];
     var topic = params.indexFromEnd(-1);
 
-    if(this.__getChannel(channel)) {
-      this.initialTopic(channel, topic);
-      return true;
-    }
+    this.initialTopic(channel, topic);
   },
   irc_RPL_TOPICWHOTIME: function(prefix, params) {
     return true;
