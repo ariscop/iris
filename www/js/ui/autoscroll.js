@@ -27,6 +27,6 @@ qwebirc.ui.AutoScroll = new Class({
     if(prevbottom < prevheight)
       prevbottom = prevheight;
 
-    return prev.y + prevheight == prevbottom;
+    return prev.y + prevheight >= prevbottom;
   }
 });
