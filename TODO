@@ -6,7 +6,6 @@ General:
 
 UI:
 - replace qwebirc UI elements (logo, pages, etc)
-- Re-implement Autoscroll (important)
 
 README:
 - Document dependencies (swftools added by flashsocket)

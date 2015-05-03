@@ -403,6 +403,8 @@ qwebirc.ui.QUI.Window = new Class({
     this.lines.addClass("lines");
     if(type != qwebirc.ui.WINDOW_CUSTOM)
       this.lines.addClass("ircwindow");
+    if(type & qwebirc.ui.WINDOW_LINES)
+      this.lines.scroller = new qwebirc.ui.AutoScroll(this.lines);
 
     if(type == qwebirc.ui.WINDOW_CHANNEL) {
       this.topic = new Element("div");
