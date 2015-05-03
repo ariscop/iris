@@ -53,6 +53,10 @@ qwebirc.ui.Window = new Class({
 
     this.subEvent("select");
     this.lastSelected = new Date();
+
+    /* Scroll when we come into focus */
+    if($defined(this.lines.scroller))
+      this.lines.scroller.update();
   },
   deselect: function() {
     this.subEvent("deselect");
