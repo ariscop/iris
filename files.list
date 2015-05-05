@@ -15,7 +15,6 @@ js/irc/commandparser.js
 js/irc/commands.js
 js/irc/baseircclient.js
 js/irc/ircclient.js
-js/irc/ircconnection.js
 js/irc/flashconnection.js
 js/irc/wsconnection.js
 js/irc/irclib.js
