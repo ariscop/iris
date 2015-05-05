@@ -68,6 +68,9 @@ qwebirc.irc.BaseIRCClient = new Class({
     var message = data[0];
     if(message == "connect") {
       this.__connected = true;
+      this.send("CAP LS");
+      this.send("USER "+this.nickname+" 0 * :qwebirc");
+      this.send("NICK "+this.nickname);
       this.connected();
     } else if(message == "disconnect") {
       if(data.length == 0) {

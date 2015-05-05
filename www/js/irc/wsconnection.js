@@ -3,11 +3,8 @@ qwebirc.irc.WSConnection = new Class({
   Implements: [Events, Options],
   Binds: ["connected", "disconnected", "recv"],
   options: {
-    initialNickname: "ircconnX",
     url: "ws://irc.example.com/",
     timeout: 45000,
-    maxRetries: 5,
-    serverPassword: null
   },
   initialize: function(session, options) {
     this.setOptions(options, conf.websocket);
@@ -23,11 +20,6 @@ qwebirc.irc.WSConnection = new Class({
     this.socket.onmessage = this.recv;
   },
   connected: function(e) {
-    this.send("CAP LS");
-    this.send("USER "+this.options.initialNickname+" 0 * :qwebirc");
-    if(this.options.serverPassword)
-      this.send("PASS :"+this.options.serverPassword);
-    this.send("NICK "+this.options.initialNickname);
     this.fireEvent("recv", [["connect"]]);
   },
   disconnect: function() {

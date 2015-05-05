@@ -2,13 +2,9 @@
 qwebirc.irc.FlashConnection = new Class({
   Implements: [Events, Options],
   options: {
-    initialNickname: "ircconnX",
     server: "irc.example.com",
     port: 6667,
     xmlport: 8430,
-    timeout: 45000,
-    maxRetries: 5,
-    serverPassword: null
   },
   initialize: function(session, options) {
     this.setOptions(options, conf.flash);
@@ -23,11 +19,6 @@ qwebirc.irc.FlashConnection = new Class({
     FlashSocket.connect(this.options.server, this.options.port, this.options.xmlport);
   },
   connected: function() {
-    this.send("CAP LS");
-    this.send("USER "+this.options.initialNickname+" 0 * :qwebirc");
-    if(this.options.serverPassword)
-      this.send("PASS :"+this.options.serverPassword);
-    this.send("NICK "+this.options.initialNickname);
     this.fireEvent("recv", [["connect"]]);
   },
   disconnect: function() {
