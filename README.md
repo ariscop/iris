@@ -13,10 +13,8 @@ Via a flash plugin. requires a flash policy server running on the irc,
 server, otherwise a normal client.
 
 ##Installation
-Run make, it will create a compressed .js file and source map.
-Copy index.html.tmpl and edit.
+Run make, copy config.js.example to www/config.js, edit, you're done.
+Place the www folder somewhere an http server can see it
 
 ###TODO
-* "irc-raw" websocket protocol that takes binary frames, allowing dumb
-  tcp<->websocket proxy.
-* Proper build system (important)
+* Fix all the things
