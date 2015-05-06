@@ -62,7 +62,7 @@ qwebirc.irc.BaseCommandParser = new Class({
       var cmdopts = this["cmd_" + command];
       if(!cmdopts) {
         if(args) {
-          this.send(command + " " + args);
+          this.sendRaw(command + " " + args);
         } else {
           this.send(command);
         }
@@ -102,7 +102,10 @@ qwebirc.irc.BaseCommandParser = new Class({
   getActiveWindow: function() {
     return this.session.irc.getActiveWindow();
   },
-  send: function(data, synchronous) {
-    return this.session.irc.send(data, synchronous);
+  send: function() {
+    return this.session.irc.send.apply(this.session.irc, arguments);
+  },
+  sendRaw: function(data) {
+    return this.session.irc.sendRaw(data);
   }
 });

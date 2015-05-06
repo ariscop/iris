@@ -29,8 +29,7 @@ qwebirc.irc.Commands = new Class({
       args = "";
 
     var target = this.getActiveWindow().name;
-    if(!this.send("PRIVMSG " + target + " :\x01ACTION " + args + "\x01"))
-      return;
+    this.send('PRIVMSG', target, '\x01ACTION ' + args + '\x01')
 
     this.newQueryLine(target, "ACTION", args, {"@": this.session.irc.getNickStatus(target, this.session.irc.nickname)});
   }],
@@ -43,11 +42,9 @@ qwebirc.irc.Commands = new Class({
       message = "";
 
     if(message == "") {
-      if(!this.send("PRIVMSG " + target + " :\x01" + type + "\x01"))
-        return;
+      this.send('PRIVMSG', target, '\x01' + type + '\x01')
     } else {
-      if(!this.send("PRIVMSG " + target + " :\x01" + type + " " + message + "\x01"))
-        return;
+      this.send('PRIVMSG', target, '\x01' + type + ' ' + message + '\x01')
     }
 
     this.newTargetLine(target, "CTCP", message, {"x": type});
@@ -58,19 +55,18 @@ qwebirc.irc.Commands = new Class({
 
     if(!this.session.irc.isChannel(target))
       this.session.irc.pushLastNick(target);
-    if(this.send("PRIVMSG " + target + " :" + message))
-      this.newQueryLine(target, "MSG", message, {"@": this.session.irc.getNickStatus(target, this.session.irc.nickname)});
+    this.send('PRIVMSG', target, message)
+    this.newQueryLine(target, "MSG", message, {"@": this.session.irc.getNickStatus(target, this.session.irc.nickname)});
   }],
   cmd_NOTICE: [false, 2, 2, function(args) {
     var target = args[0];
     var message = args[1];
 
-    if(this.send("NOTICE " + target + " :" + message)) {
-      if(this.session.irc.isChannel(target)) {
-        this.newTargetLine(target, "NOTICE", message, {"@": this.session.irc.getNickStatus(target, this.session.irc.nickname)});
-      } else {
-        this.newTargetLine(target, "NOTICE", message);
-      }
+    this.send('NOTICE', target, message);
+    if(this.session.irc.isChannel(target)) {
+      this.newTargetLine(target, "NOTICE", message, {"@": this.session.irc.getNickStatus(target, this.session.irc.nickname)});
+    } else {
+      this.newTargetLine(target, "NOTICE", message);
     }
   }],
   cmd_QUERY: [false, 2, 1, function(args) {
@@ -105,7 +101,7 @@ qwebirc.irc.Commands = new Class({
     if(args.length == 2)
       message = args[1];
 
-    this.send("KICK " + channel + " " + target + " :" + message);
+    this.send('KICK', channel, target, message);
   }],
   automode: function(direction, mode, args) {
     var channel = this.getActiveWindow().name;
@@ -114,7 +110,7 @@ qwebirc.irc.Commands = new Class({
     for(var i=0;i<args.length;i++)
       modes = modes + mode;
 
-    this.send("MODE " + channel + " " + modes + " " + args.join(" "));
+    this.sendRaw("MODE " + channel + " " + modes + " " + args.join(" "));
   },
   cmd_OP: [true, 6, 1, function(args) {
     this.automode("+", "o", args);
@@ -129,34 +125,34 @@ qwebirc.irc.Commands = new Class({
     this.automode("-", "v", args);
   }],
   cmd_TOPIC: [true, 1, 1, function(args) {
-    this.send("TOPIC " + this.getActiveWindow().name + " :" + args[0]);
+    this.send('TOPIC', this.getActiveWindow().name, args[0]);
   }],
   cmd_AWAY: [false, 1, 0, function(args) {
-    this.send("AWAY :" + (args?args[0]:""));
+    this.send('AWAY', (args?args[0]:""));
   }],
   cmd_QUIT: [false, 1, 0, function(args) {
-    this.send("QUIT :" + (args?args[0]:""));
+    this.send('QUIT', (args?args[0]:""));
   }],
   cmd_CYCLE: [true, 1, 0, function(args) {
     var c = this.getActiveWindow().name;
 
-    this.send("PART " + c + " :" + (args?args[0]:"rejoining. . ."));
-    this.send("JOIN " + c);
+    this.send('PART', c, (args?args[0]:"rejoining. . ."));
+    this.send('JOIN', c);
   }],
   cmd_JOIN: [false, 2, 1, function(args) {
     var channels = args.shift();
 
     var schans = channels.split(",");
-    var fchans = [];
 
     var warn = false;
 
-    schans.forEach(function(x) {
+    var fchans = schans.map(function(x) {
       if(!this.session.irc.isChannel(x)) {
-        x = "#" + x;
         warn = true;
+        return '#' + x;
+      } else {
+        return x;
       }
-      fchans.push(x);
     }.bind(this));
 
     if(warn) {
@@ -165,10 +161,10 @@ qwebirc.irc.Commands = new Class({
       }.bind(this).delay(250);
     }
 
-    this.send("JOIN " + fchans.join(",") + " " + args.join(" "));
+    this.send('JOIN', fchans.join(","));
   }],
   cmd_UMODE: [false, 1, 0, function(args) {
-    this.send("MODE " + this.session.irc.getNickname() + (args?(" " + args[0]):""));
+    this.send('MODE', this.session.irc.getNickname(), (args ? args[0] : ""));
   }],
   cmd_BEEP: [false, undefined, undefined, function(args) {
     this.session.irc.ui.beep();
@@ -210,6 +206,6 @@ qwebirc.irc.Commands = new Class({
       }
     }
 
-    this.send("PART " + channel + " :" + message);
+    this.send('PART', channel, message);
   }]
 });

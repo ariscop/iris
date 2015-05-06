@@ -499,7 +499,7 @@ qwebirc.irc.IRCClient = new Class({
     this.newServerLine("ERROR", {"m": message});
   },
   quit: function(message) {
-    this.send("QUIT :" + message, true);
+    this.send('QUIT', message);
     this.disconnect();
   },
   awayMessage: function(nick, message) {

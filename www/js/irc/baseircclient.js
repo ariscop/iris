@@ -43,8 +43,27 @@ qwebirc.irc.BaseIRCClient = new Class({
 
     this.setupGenericErrors();
   },
-  send: function(data) {
-    return this.connection.send(data);
+  formatLine: function(params) {
+    var line = "";
+    var trailing = false;
+    params = params.map(function(param) {
+      if(trailing)
+        throw new Error('Spaces in non-trailing argument');
+
+      if(param.indexOf(' ') != -1) {
+        trailing = true;
+        return ':' + param;
+      } else {
+        return param;
+      }
+    })
+    return params.join(' ');
+  },
+  send: function() {
+    this.connection.send(this.formatLine(Array.from(arguments)));
+  },
+  sendRaw: function(line) {
+    this.connection.send(line);
   },
   connect: function() {
     this.tryConnect();
@@ -68,9 +87,9 @@ qwebirc.irc.BaseIRCClient = new Class({
     var message = data[0];
     if(message == "connect") {
       this.__connected = true;
-      this.send("CAP LS");
-      this.send("USER "+this.nickname+" 0 * :qwebirc");
-      this.send("NICK "+this.nickname);
+      this.send('CAP', 'LS');
+      this.send('USER', this.nickname, '0',  '*', 'qwebirc');
+      this.send('NICK', this.nickname);
       this.connected();
     } else if(message == "disconnect") {
       if(data.length == 0) {
@@ -160,16 +179,16 @@ qwebirc.irc.BaseIRCClient = new Class({
     }
   },
   irc_AUTHENTICATE: function(prefix, params) {
-    this.send("AUTHENTICATE "+btoa([this.authUser, this.authUser, this.authSecret].join('\0')));
+    this.send('AUTHENTICATE', btoa([this.authUser, this.authUser, this.authSecret].join('\0')));
     return true;
   },
   irc_saslFinished: function(prefix, params) {
-    this.send("CAP END");
+    this.send('CAP', 'END');
     $clear(this.sasl_timeout);
     return false;
   },
   __saslTimeout: function() {
-    this.send("CAP END");
+    this.send('CAP', 'END');
   },
   irc_CAP: function(prefix, params) {
     var caplist;
@@ -186,15 +205,15 @@ qwebirc.irc.BaseIRCClient = new Class({
 
       if (params[2] != "*") {
         if(this.caps.sasl && this.authUser) {
-          this.send("AUTHENTICATE "+conf.atheme.sasl_type);
+          this.send('AUTHENTICATE', conf.atheme.sasl_type);
           this.sasl_timeout = this.__saslTimeout.delay(15000, this);
         } else {
-          this.send("CAP END");
+          this.send('CAP', 'END');
         }
       }
       break;
     case "NAK":
-      this.send("CAP END");
+      this.send('CAP', 'END');
       break;
     case "LS":
       if (params[2] == "*") {
@@ -213,9 +232,9 @@ qwebirc.irc.BaseIRCClient = new Class({
       if (params[2] != "*") {
         caplist = Object.keys(this.caps);
         if(caplist.length) {
-          this.send("CAP REQ :"+caplist.join(" "));
+          this.send('CAP', 'REQ', caplist.join(" "));
         } else {
-          this.send("CAP END");
+          this.send('CAP', 'END');
         }
       }
     }
@@ -273,7 +292,7 @@ qwebirc.irc.BaseIRCClient = new Class({
     return true;
   },
   irc_PING: function(prefix, params) {
-    this.send("PONG :" + params.indexFromEnd(-1));
+    this.send('PONG', params.indexFromEnd(-1));
 
     return true;
   },
@@ -315,11 +334,12 @@ qwebirc.irc.BaseIRCClient = new Class({
     if(ctcp) {
       var type = ctcp[0].toUpperCase();
 
+
       var replyfn = qwebirc.irc.RegisteredCTCPs[type];
       if(replyfn) {
         var t = new Date().getTime() / 1000;
         if(t > this.nextctcp)
-          this.send("NOTICE " + user.hostToNick() + " :\x01" + type + " " + replyfn(ctcp[1]) + "\x01");
+          this.send('NOTICE', user.hostToNick(), "\x01" + type + " " + replyfn(ctcp[1]) + "\x01");
         this.nextctcp = t + 5;
       }
 
@@ -581,7 +601,7 @@ qwebirc.irc.BaseIRCClient = new Class({
     if(newnick == this.lastnick)
       newnick = "iris" + Math.floor(Math.random() * 1024 * 1024);
 
-    this.send("NICK " + newnick);
+    this.send('NICK', newnick);
     this.lastnick = newnick;
     return true;
   },
