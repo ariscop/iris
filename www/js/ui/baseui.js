@@ -165,7 +165,7 @@ qwebirc.ui.StandardUI = new Class({
   initialize: function(session, parentElement, windowClass, uiName) {
     this.parent(session, parentElement, windowClass, uiName);
 
-    this.tabCompleter = new qwebirc.ui.TabCompleterFactory(this);
+    this.tabCompleter = new qwebirc.ui.TabCompleterFactory(session);
 
     var ev;
     if(Browser.Engine.trident) {
