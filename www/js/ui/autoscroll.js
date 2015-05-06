@@ -13,7 +13,8 @@ qwebirc.ui.AutoScroll = new Class({
   },
   onScroll: function() {
     /* If we're at the bottom, start autoscrolling */
-    this.scrolling = this.scrolledDown();
+    if(!this.isRunning())
+      this.scrolling = this.scrolledDown();
   },
   scrolledDown: function() {
     var prev = this.element.getScroll();
