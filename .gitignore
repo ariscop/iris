@@ -1,7 +1,8 @@
 node_modules
+www/qui.js
+www/qui.js.map
 www/config.js
-www/*.html
-www/*.js
-www/*.js.map
+www/index.html
+www/debug.html
 www/swf/*.swf
 
