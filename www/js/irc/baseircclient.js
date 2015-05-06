@@ -89,20 +89,29 @@ qwebirc.irc.BaseIRCClient = new Class({
       var prefix = "";
       var params = [];
       var trailing = "";
+      var curpos = 0, nextpos = 0;
 
-      if (line[0] == ":") {
-          var index = line.indexOf(" ");
-          prefix = line.substring(1, index);
-          line = line.substring(index + 1);
+      /* Parse the received line into tokens */
+      while(curpos < line.length) {
+        nextpos = line.indexOf(' ', curpos);
+
+        if(nextpos < 0)
+          nextpos = line.length;
+
+        if(curpos > 0 && line.charAt(curpos) == ':') {
+          curpos++;
+          nextpos = line.length;
+        }
+
+        params.push(line.substring(curpos, nextpos));
+        curpos = nextpos + 1;
       }
-      if (line.indexOf(" :") != -1) {
-          var index = line.indexOf(" :");
-          trailing = line.substring(index + 2);
-          params = line.substring(0, index).split(" ");
-          params.push(trailing);
-      } else {
-          params = line.split(" ");
-      }
+
+      /* Strip the prefix */
+      if(params[0].charAt(0) == ':')
+        prefix = params.splice(0, 1)[0].substring(1);
+
+      /* Strip the command */
       command = params.splice(0, 1)[0].toUpperCase();
 
       var n = qwebirc.irc.Numerics[command];
