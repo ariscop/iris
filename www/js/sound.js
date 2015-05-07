@@ -31,7 +31,7 @@ qwebirc.sound.SoundPlayer = new Class({
     }
 
     var debugMode = false;
-    qwebirc.util.importJS(conf.frontend.static_base_url + "js/" + (debugMode?"soundmanager2":"soundmanager2-nodebug-jsmin") + ".js", "soundManager", function() {
+    qwebirc.util.importJS(conf.frontend.static_base_url + "js/lib/soundmanager2.js", "soundManager", function() {
       soundManager.url = conf.frontend.static_base_url + "sound/";
 
       soundManager.debugMode = debugMode;
