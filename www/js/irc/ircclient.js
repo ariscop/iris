@@ -1,8 +1,13 @@
 qwebirc.irc.IRCClient = new Class({
   Extends: qwebirc.irc.BaseIRCClient,
   session: null,
-  initialize: function(session, connOptions) {
-    this.parent(session, connOptions);
+  initialize: function(session, connOptions, sendFunc) {
+    this.parent(
+      connOptions.nickname,
+      connOptions.authUser,
+      connOptions.authSecret,
+      sendFunc
+    );
 
     this.prefixes = "@+";
     this.modeprefixes = "ov";
@@ -484,7 +489,7 @@ qwebirc.irc.IRCClient = new Class({
     this.parent(key, value);
   },
   connected: function() {
-    qwebirc.connected = true;
+    this.parent();
     this.newServerLine("CONNECT");
   },
   serverError: function(message) {

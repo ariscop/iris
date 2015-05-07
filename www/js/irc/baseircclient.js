@@ -15,31 +15,17 @@ qwebirc.irc.RegisteredCTCPs = {
 };
 
 qwebirc.irc.BaseIRCClient = new Class({
-  session: null,
-  initialize: function(session, connOptions) {
-    this.session = session;
-
-    this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
-
-    this.nickname = connOptions.nickname;
-    this.authUser = connOptions.authUser;
-    this.authSecret = connOptions.authSecret;
-    this.lowerNickname = this.toIRCLower(this.nickname);
+  toIRCLower: qwebirc.irc.RFC1459toIRCLower,
+  initialize: function(nickname, authUser, authSecret, sendFunc) {
+    this.nickname = nickname;
+    this.authUser = authUser;
+    this.authSecret = authSecret;
+    this.sendFunc = sendFunc;
 
     this.__signedOn = false;
-    this.__connected = false;
     this.caps = {};
     this.sasl_timeout = false;
     this.pmodes = {b: qwebirc.irc.PMODE_LIST, l: qwebirc.irc.PMODE_SET_ONLY, k: qwebirc.irc.PMODE_SET_UNSET, o: qwebirc.irc.PMODE_SET_UNSET, v: qwebirc.irc.PMODE_SET_UNSET};
-    this.nextctcp = 0;
-
-    this.connections = [];
-    for(var x = 0; x < conf.frontend.connections.length; x++) {
-      switch(conf.frontend.connections[x]) {
-      case "flash": this.connections.unshift(qwebirc.irc.FlashConnection); break;
-      case "websocket": this.connections.unshift(qwebirc.irc.WSConnection); break;
-      }
-    }
 
     this.setupGenericErrors();
   },
@@ -60,94 +46,60 @@ qwebirc.irc.BaseIRCClient = new Class({
     return params.join(' ');
   },
   send: function() {
-    this.connection.send(this.formatLine(Array.from(arguments)));
+    this.sendFunc(this.formatLine(Array.from(arguments)));
   },
   sendRaw: function(line) {
-    this.connection.send(line);
+    this.sendFunc(line);
   },
-  connect: function() {
-    this.tryConnect();
+  connected: function() {
+    this.send('CAP', 'LS');
+    this.send('USER', this.nickname, '0', '*', 'qwebirc');
+    this.send('NICK', this.nickname);
   },
-  disconnect: function() {
-    this.connection.disconnect();
-  },
-  tryConnect: function() {
-    var options = {};
-    var Connection = this.connections.pop();
-    if(Connection) {
-      options.initialNickname = this.nickname;
-      options.onRecv = this.dispatch.bind(this);
-      this.connection = new Connection(this.session, options);
-      this.connection.connect();
-    } else {
-      this.disconnected("Unable to connect")
+  recv: function(line) {
+    var command = "";
+    var prefix = "";
+    var params = [];
+    var trailing = "";
+    var curpos = 0, nextpos = 0;
+
+    /* Parse the received line into tokens */
+    while(curpos < line.length) {
+      nextpos = line.indexOf(' ', curpos);
+
+      if(nextpos < 0)
+        nextpos = line.length;
+
+      if(curpos > 0 && line.charAt(curpos) == ':') {
+        curpos++;
+        nextpos = line.length;
+      }
+
+      params.push(line.substring(curpos, nextpos));
+      curpos = nextpos + 1;
     }
-  },
-  dispatch: function(data) {
-    var message = data[0];
-    if(message == "connect") {
-      this.__connected = true;
-      this.send('CAP', 'LS');
-      this.send('USER', this.nickname, '0',  '*', 'qwebirc');
-      this.send('NICK', this.nickname);
-      this.connected();
-    } else if(message == "disconnect") {
-      if(data.length == 0) {
-        this.disconnected("No error!");
-      } else {
-        this.disconnected(data[1]);
-      }
-      if(this.__signedOn) {
-        this.disconnect();
-      } else {
-        this.tryConnect();
-      }
-    } else if(message == "c") {
-      var line = data[1];
-      var command = "";
-      var prefix = "";
-      var params = [];
-      var trailing = "";
-      var curpos = 0, nextpos = 0;
 
-      /* Parse the received line into tokens */
-      while(curpos < line.length) {
-        nextpos = line.indexOf(' ', curpos);
+    /* Strip the prefix */
+    if(params[0].charAt(0) == ':')
+      prefix = params.splice(0, 1)[0].substring(1);
 
-        if(nextpos < 0)
-          nextpos = line.length;
+    /* Strip the command */
+    command = params.splice(0, 1)[0].toUpperCase();
 
-        if(curpos > 0 && line.charAt(curpos) == ':') {
-          curpos++;
-          nextpos = line.length;
-        }
+    var n = qwebirc.irc.Numerics[command];
 
-        params.push(line.substring(curpos, nextpos));
-        curpos = nextpos + 1;
-      }
+    var x = n;
+    if(!n)
+      n = command;
 
-      /* Strip the prefix */
-      if(params[0].charAt(0) == ':')
-        prefix = params.splice(0, 1)[0].substring(1);
+    var o = this["irc_" + n];
 
-      /* Strip the command */
-      command = params.splice(0, 1)[0].toUpperCase();
-
-      var n = qwebirc.irc.Numerics[command];
-
-      var x = n;
-      if(!n)
-        n = command;
-
-      var o = this["irc_" + n];
-
-      if(o) {
-        var r = o.run([prefix, params], this);
-        if(!r)
-          this.rawNumeric(command, prefix, params);
-      } else {
+    if(o) {
+      var r = o.run([prefix, params], this);
+      if(!r)
         this.rawNumeric(command, prefix, params);
-      }
+    } else {
+      this.rawNumeric(command, prefix, params);
     }
   },
   isChannel: function(target) {
@@ -163,7 +115,6 @@ qwebirc.irc.BaseIRCClient = new Class({
       } else {
         /* TODO: warn */
       }
-      this.lowerNickname = this.toIRCLower(this.nickname);
     } else if(key == "CHANMODES") {
       var smodes = value.split(",");
       for(var i=0;i<smodes.length;i++)
@@ -243,7 +194,6 @@ qwebirc.irc.BaseIRCClient = new Class({
   },
   irc_RPL_WELCOME: function(prefix, params) {
     this.nickname = params[0];
-    this.lowerNickname = this.toIRCLower(this.nickname);
     this.__signedOn = true;
     this.signedOn(this.nickname);
   },
@@ -252,10 +202,8 @@ qwebirc.irc.BaseIRCClient = new Class({
     var oldnick = user.hostToNick();
     var newnick = params[0];
 
-    if(this.nickname == oldnick) {
+    if(this.nickname == oldnick)
       this.nickname = newnick;
-      this.lowerNickname = this.toIRCLower(this.nickname);
-    }
 
     this.nickChanged(user, newnick);
 
@@ -336,12 +284,8 @@ qwebirc.irc.BaseIRCClient = new Class({
 
 
       var replyfn = qwebirc.irc.RegisteredCTCPs[type];
-      if(replyfn) {
-        var t = new Date().getTime() / 1000;
-        if(t > this.nextctcp)
-          this.send('NOTICE', user.hostToNick(), "\x01" + type + " " + replyfn(ctcp[1]) + "\x01");
-        this.nextctcp = t + 5;
-      }
+      if(replyfn)
+        this.send('NOTICE', user.hostToNick(), "\x01" + type + " " + replyfn(ctcp[1]) + "\x01");
 
       if(target == this.nickname) {
         this.userCTCP(user, type, ctcp[1]);
