@@ -35,12 +35,10 @@ qwebirc.irc.IRCClient = new Class({
     if($defined(user)) {
       extra["n"] = user.hostToNick();
       extra["h"] = user.hostToHost();
+      extra["@"] = this.getNickStatus(channel, user.hostToNick());
     }
     extra["c"] = channel;
     extra["-"] = this.nickname;
-
-    if(!(conf.ui.nick_status))
-      delete extra["@"];
 
     this.newLine(channel, type, extra);
   },
@@ -323,11 +321,11 @@ qwebirc.irc.IRCClient = new Class({
     var nick = user.hostToNick();
     if(type == "ACTION") {
       this.tracker.updateLastSpoke(nick, channel, new Date().getTime());
-      this.newChanLine(channel, "CHANACTION", user, {"m": args, "c": channel, "@": this.getNickStatus(channel, nick)});
+      this.newChanLine(channel, "CHANACTION", user, {"m": args});
       return;
     }
 
-    this.newChanLine(channel, "CHANCTCP", user, {"x": type, "m": args, "c": channel, "@": this.getNickStatus(channel, nick)});
+    this.newChanLine(channel, "CHANCTCP", user, {"x": type, "m": args});
   },
   userCTCP: function(user, type, args) {
     var nick = user.hostToNick();
@@ -365,10 +363,10 @@ qwebirc.irc.IRCClient = new Class({
     var nick = user.hostToNick();
 
     this.tracker.updateLastSpoke(nick, channel, new Date().getTime());
-    this.newChanLine(channel, "CHANMSG", user, {"m": message, "@": this.getNickStatus(channel, nick)});
+    this.newChanLine(channel, "CHANMSG", user, {"m": message});
   },
   channelNotice: function(user, channel, message) {
-    this.newChanLine(channel, "CHANNOTICE", user, {"m": message, "@": this.getNickStatus(channel, user.hostToNick())});
+    this.newChanLine(channel, "CHANNOTICE", user, {"m": message});
   },
   userPrivmsg: function(user, message) {
     var nick = user.hostToNick();
