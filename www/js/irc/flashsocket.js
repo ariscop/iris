@@ -1,38 +1,50 @@
+"use strict";
 
-qwebirc.irc.FlashConnection = new Class({
-  Implements: [Events, Options],
-  options: {
-    server: "irc.example.com",
-    port: 6667,
-    xmlport: 8430,
-  },
-  initialize: function(session, options) {
-    this.setOptions(options, conf.flash);
-  },
-  connect: function() {
+FlashSocket = new Class({
+  Implements: [Events],
+  Binds: ['_state'],
+
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSING: 2,
+  CLOSED: 3,
+
+  initialize: function(url, protocol) {
+    this.url = new URI(url);
+    this.protocol = protocol;
+    var server = this.url.get("host");
+    var port = Number(this.url.get("host"));
+    var xmlport = Number(this.url.getData("xmlport"));
+
     this.buffer = [];
-    if(!FlashSocket.connect) {
-      this.fireEvent("recv", [["disconnect", "No Flash support"]]);
-      return;
-    }
-    FlashSocket.state = this.__state.bind(this);
-    FlashSocket.connect(this.options.server, this.options.port, this.options.xmlport);
+
+    FlashSocket.swf.state = this._state;
+    FlashSocket.swf.connect();
   },
-  connected: function() {
-    this.fireEvent("recv", [["connect"]]);
+
+  onopen:  function() {},
+  onerror: function() {},
+  onclose: function() {},
+
+  close: function(code, reason) {
+    /* code and reason ignored */
+    FlashSocket.swf.disconnect();
   },
-  disconnect: function() {
-    FlashSocket.disconnect();
-  },
-  disconnected: function(reason) {
-    reason = reason || "Connection Closed";
-    this.fireEvent("recv", [["disconnect", reason]]);
-  },
-  send: function(data, synchronous) {
-    FlashSocket.write(String(data)+"\r\n");
+  send: function(data) {
+    FlashSocket.swf.write(String(data)+"\r\n");
     return true;
   },
-  recv: function(data) {
+
+  _connected: function() {
+    this.fireEvent("open", {});
+  },
+  _disconnected: function(reason) {
+    reason = reason || "Connection Closed";
+    var ev = {reason: reason}
+    this.fireEvent("close", ev);
+    
+  },
+  _recv: function(data) {
     var LF = 10;
     var buffer = this.buffer.concat(data);
     var i = buffer.indexOf(LF);
@@ -40,12 +52,13 @@ qwebirc.irc.FlashConnection = new Class({
       var msg = buffer.splice(0, i+1);
       msg.pop(); //LF
       msg.pop(); //CR
-      this.fireEvent("recv", [["c", this.decode(msg)]]);
+      this.fireEvent("recv", [["c", this._decode(msg)]]);
       i = buffer.indexOf(LF);
     }
     this.buffer = buffer;
   },
-  decode: function(buffer) {
+  _decode: function(buffer) {
+    /* Decode a utf-8 buffer into a java string */
     var replace = 65533; //U+FFFD 'REPLACEMENT CHARACTER'
     var points = [];
     var i = 0;
@@ -90,7 +103,7 @@ qwebirc.irc.FlashConnection = new Class({
     }
     return String.fromCharCode.apply(null, points);
   },
-  __state: function(state, msg) {
+  _state: function(state, msg) {
     if(state == 1 /* OPEN */)
       this.connected();
     if(state == 3 /* CLOSED */)
@@ -102,3 +115,7 @@ qwebirc.irc.FlashConnection = new Class({
     }
   }
 });
+
+FlashSocket.available = function() {
+    return !FlashSocket.swf.connect;
+}

@@ -15,12 +15,12 @@ qwebirc.irc.RegisteredCTCPs = {
 };
 
 qwebirc.irc.BaseIRCClient = new Class({
+  Implements: [Events],
   toIRCLower: qwebirc.irc.RFC1459toIRCLower,
-  initialize: function(nickname, authUser, authSecret, sendFunc) {
-    this.nickname = nickname;
-    this.authUser = authUser;
-    this.authSecret = authSecret;
-    this.sendFunc = sendFunc;
+  initialize: function(connOptions) {
+    this.nickname = connOptions.nickname;
+    this.authUser = connOptions.authUser;
+    this.authSecret = connOptions.authSecret;
 
     this.__signedOn = false;
     this.caps = {};
@@ -46,15 +46,21 @@ qwebirc.irc.BaseIRCClient = new Class({
     return params.join(' ');
   },
   send: function() {
-    this.sendFunc(this.formatLine(Array.from(arguments)));
+    this.socket.send(this.formatLine(Array.from(arguments)));
   },
   sendRaw: function(line) {
-    this.sendFunc(line);
+    this.socket.send(line);
+  },
+  connect: function(socket) {
+    this.socket = socket;
   },
   connected: function() {
     this.send('CAP', 'LS');
     this.send('USER', this.nickname, '0', '*', 'qwebirc');
     this.send('NICK', this.nickname);
+  },
+  error: function(e) {
+    this.serverError((e.reason ? e.reason : "Unknown reason")+" ("+e.code+")");
   },
   recv: function(line) {
     var command = "";
@@ -195,6 +201,7 @@ qwebirc.irc.BaseIRCClient = new Class({
   irc_RPL_WELCOME: function(prefix, params) {
     this.nickname = params[0];
     this.__signedOn = true;
+    this.socket.stopRetrying();
     this.signedOn(this.nickname);
   },
   irc_NICK: function(prefix, params) {

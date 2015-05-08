@@ -40,14 +40,6 @@ qwebirc.config.load = function(config) {
 		config.frontend.chan_prompt = false;
 	}
 
-	/* Load channels from query string. */
-	if($defined(args["url"])) {
-		var urlchans = qwebirc.config.parseIRCURL(args["url"]);
-		if (urlchans) {
-			config.frontend.initial_chans = urlchans;
-			config.frontend.chan_prompt = false;
-		}
-	}
 	if ($defined(args["initial_chans"])) {
 		var initial_chans = args["initial_chans"];
 		config.frontend.initial_chans = initial_chans;
@@ -150,75 +142,4 @@ qwebirc.config.randSub = function(nick) {
 			return v;
 		}
 	}).join("");
-};
-
-/* Parse a channel out of a provided URL, if one is set.
-   Returns the provided channel (potentially with key), or nothing. */
-qwebirc.config.parseIRCURL = function(url) {
-	if(url.indexOf(":") == 0)
-		return;
-	var schemeComponents = url.splitMax(":", 2);
-	if(schemeComponents[0].toLowerCase() != "irc" && schemeComponents[0].toLowerCase() != "ircs") {
-		alert("Bad IRC URL scheme.");
-		return;
-	}
-
-	if(url.indexOf("/") == 0) {
-		/* irc: */
-		return;
-	}
-
-	var pathComponents = url.splitMax("/", 4);
-	if(pathComponents.length < 4 || pathComponents[3] == "") {
-		/* irc://abc */
-		return;
-	}
-
-	var args, queryArgs;
-	if(pathComponents[3].indexOf("?") > -1) {
-		queryArgs = qwebirc.util.parseURI(pathComponents[3]);
-		args = pathComponents[3].splitMax("?", 2)[0];
-	} else {
-		args = pathComponents[3];
-	}
-	var parts = args.split(",");
-
-	var channel = parts[0];
-	if(channel.charAt(0) != "#")
-		channel = "#" + channel;
-
-	var not_supported = [], needkey = false, key;
-	for(var i=1;i<parts.length;i++) {
-		var value = parts[i];
-		if(value == "needkey") {
-			needkey = true;
-		} else {
-			not_supported.push(value);
-		}
-	}
-
-	if($defined(queryArgs)) {
-		for(var key_ in queryArgs) {
-			var value = queryArgs[key_];
-
-			if(key_ == "key") {
-				key = value;
-				needkey = true;
-			} else {
-				not_supported.push(key_);
-			}
-		}
-	}
-
-	if(needkey) {
-		if(!$defined(key))
-			key = prompt("Please enter the password for channel " + channel + ":");
-		if($defined(key))
-			channel = channel + " " + key;
-	}
-
-	if(not_supported.length > 0)
-		alert("The following IRC URL components were not accepted: " + not_supported.join(", ") + ".");
-
-	return channel;
 };

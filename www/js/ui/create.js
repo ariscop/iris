@@ -10,7 +10,7 @@ qwebirc.ui.create = function(element, uiclass) {
     /* Define login function. */
     var callback = function(connOptions) {
       session.irc = new qwebirc.irc.IRCClient(session, connOptions);
-      session.irc.connect();
+      qwebirc.irc.beginConnect(session);
       window.onbeforeunload = qwebirc.ui.onbeforeunload;
       window.addEvent("unload", function() {
         session.irc.quit("Web client closed");

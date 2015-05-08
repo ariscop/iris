@@ -84,20 +84,6 @@ conf = qwebirc.config.load({
 
         "chan_list": true
     },
-    "flash": {
-        // SERVER: Hostname (or IP address) of IRC server to connect to.
-        "server": "irc.myserver.com",
-
-        // PORT: Port of IRC server to connect to.
-        "port": 6667,
-
-        // XMLPORT: Port of IRC servers flash policy daemon
-        "xmlport": 8430,
-    },
-    "websocket": {
-        // URL: URL of IRC server to connect to.
-        "url": "ws://irc.myserver.com/"
-    },
     // FRONTEND OPTIONS
     // These alter the general settings and text used within the frontend.
     // Many of these are overridable by query string, in which case these settings
@@ -151,10 +137,17 @@ conf = qwebirc.config.load({
         // If set false, then the user is simply redirected to the connect window, with
         // the channel set in the channel box.
         "chan_autoconnect": true,
+    },
+    // CONNECTIONS: URL's to try connecting too
+    "connections": [
+        // Connect to an irc server via flash
+        // xmlport: Flash policy daemon port
+        "irc://irc.example.com/?xmlport=8430",
 
-        // CONNECTIONS: What order to attempt methods of connection in
-        // valid values: flash websocket
-        "connections": ["flash"],
+        // Connect to an irc server via websockets with ssl
+        "wss://irc.example.com/",
 
-    }
+        // Connect to an irc server via websockets without ssl
+        "ws://irc.example.com/"
+    ]
 });
