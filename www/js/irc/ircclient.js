@@ -15,8 +15,6 @@ qwebirc.irc.IRCClient = new Class({
     this.statusWindow = ui.newClient();
     this.lastNicks = [];
 
-    this.inviteChanList = [];
-
     this.tracker = new qwebirc.irc.IRCTracker(this);
   },
   newLine: function(window, type, data) {
@@ -396,10 +394,6 @@ qwebirc.irc.IRCClient = new Class({
     } else {
       this.newTargetOrActiveLine(nick, "PRIVNOTICE", {"m": message, "h": host, "n": nick});
     }
-  },
-  __joinInvited: function() {
-    this.exec("/JOIN " + this.inviteChanList.join(","));
-    this.inviteChanList = [];
   },
   userInvite: function(user, channel) {
     var nick = user.hostToNick();
