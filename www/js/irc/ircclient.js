@@ -1,8 +1,8 @@
 qwebirc.irc.IRCClient = new Class({
   Extends: qwebirc.irc.BaseIRCClient,
-  session: null,
   initialize: function(session, connOptions) {
-    this.parent(session, connOptions);
+    this.parent(connOptions);
+    this.session = session;
 
     this.prefixes = "@+";
     this.modeprefixes = "ov";

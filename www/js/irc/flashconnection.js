@@ -6,7 +6,7 @@ qwebirc.irc.FlashConnection = new Class({
     port: 6667,
     xmlport: 8430,
   },
-  initialize: function(session, options) {
+  initialize: function(options) {
     this.setOptions(options, conf.flash);
   },
   connect: function() {

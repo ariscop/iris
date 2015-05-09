@@ -6,7 +6,7 @@ qwebirc.irc.WSConnection = new Class({
     url: "ws://irc.example.com/",
     timeout: 45000,
   },
-  initialize: function(session, options) {
+  initialize: function(options) {
     this.setOptions(options, conf.websocket);
   },
   connect: function() {

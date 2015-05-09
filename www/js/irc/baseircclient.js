@@ -16,11 +16,8 @@ qwebirc.irc.RegisteredCTCPs = {
 
 qwebirc.irc.BaseIRCClient = new Class({
   session: null,
-  initialize: function(session, connOptions) {
-    this.session = session;
-
+  initialize: function(connOptions) {
     this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
-
     this.nickname = connOptions.nickname;
     this.authUser = connOptions.authUser;
     this.authSecret = connOptions.authSecret;
@@ -77,7 +74,7 @@ qwebirc.irc.BaseIRCClient = new Class({
     if(Connection) {
       options.initialNickname = this.nickname;
       options.onRecv = this.dispatch.bind(this);
-      this.connection = new Connection(this.session, options);
+      this.connection = new Connection(options);
       this.connection.connect();
     } else {
       this.disconnected("Unable to connect")
@@ -159,7 +156,7 @@ qwebirc.irc.BaseIRCClient = new Class({
       if(value == "ascii") {
         this.toIRCLower = qwebirc.irc.ASCIItoIRCLower;
       } else if(value == "rfc1459") {
-        /* IGNORE */
+        this.toIRCLower = qwebirc.irc.RFC1459toIRCLower;
       } else {
         /* TODO: warn */
       }
