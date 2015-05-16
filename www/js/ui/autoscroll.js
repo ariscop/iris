@@ -1,15 +1,27 @@
 qwebirc.ui.AutoScroll = new Class({
   Extends: Fx.Scroll,
-  Binds: ['onScroll', 'update'],
+  Binds: ['onScroll', 'doScroll', 'update'],
   initialize: function(element) {
     this.parent(element, {wheelStops: true});
     this.element.addEvent('scroll', this.onScroll);
-    window.addEvent('resize', this.update);
     this.scrolling = true;
+    this.timeout = false;
+    window.addEvent('resize', this.update);
   },
   update: function() {
-    if(this.scrolling)
-        this.toBottom();
+    if(this.scrolling && !this.timeout)
+      /* Defer scrolling, browsers don't seem to reflow instantly */
+      this.timeout = setTimeout(this.doScroll, 1);
+  },
+  doScroll: function() {
+    /* Set the scrolling flag, just in case */
+    this.scrolling = true;
+
+    /* Clear the timeout */
+    this.timeout = false;
+
+    /* And scroll */
+    this.toBottom();
   },
   onScroll: function() {
     /* If we're at the bottom, start autoscrolling */
